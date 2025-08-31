@@ -1743,8 +1743,9 @@
         Your browser does not support the audio element.
     </audio>
     
-    <!-- EMERGENCY GAME SYSTEM - GUARANTEED 10 SECOND LOADING -->
-    <script src="game-emergency-fix.js"></script>
+    <!-- HYBRID PIRATE LOADER - REAL SPRITES + FAST LOADING -->
+    <script src="game-hybrid-loader.js"></script>
+    <script src="game.js"></script>
     
     <!-- Solana Web3.js with fallback -->
     <script>
@@ -1804,44 +1805,36 @@
                 console.error('❌ startGame still not available after 1 second!');
                 console.log('🔄 Attempting to force create startGame function...');
                 
-                // Create a GUARANTEED emergency startGame function
+                // Create HYBRID startGame function - REAL sprites with fast loading
                 window.startGame = function() {
-                    console.log('🚨 EMERGENCY START GAME ACTIVATED - GUARANTEED LOADING!');
+                    console.log('🏴‍☠️ HYBRID START: Loading real pirate sprites with fast fallbacks!');
                     
-                    // Use the emergency game system instead of complex loading
-                    if (typeof window.emergencyStartGame === 'function') {
-                        console.log('✅ Using emergency game system for guaranteed loading');
-                        window.emergencyStartGame();
-                    } else {
-                        console.error('❌ Emergency system not available, trying complex fallback');
+                    try {
+                        // Hide welcome menu
+                        const welcomeMenu = document.getElementById('welcomeMenu');
+                        if (welcomeMenu) welcomeMenu.style.display = 'none';
                         
-                        try {
-                            // Hide welcome menu
-                            const welcomeMenu = document.getElementById('welcomeMenu');
-                            if (welcomeMenu) welcomeMenu.style.display = 'none';
+                        // Check if main game class exists
+                        if (typeof PirateBombGame !== 'undefined') {
+                            console.log('✅ Main game class found, starting REAL pirate game...');
                             
-                            // Check if main game class exists
-                            if (typeof PirateBombGame !== 'undefined') {
-                                console.log('✅ Main game class found, attempting normal initialization...');
-                                
-                                // Try to create and start the game normally
-                                const game = new PirateBombGame();
-                                window.game = game;
-                                
-                                game.boot().then(() => {
-                                    console.log('✅ Emergency startup successful!');
-                                }).catch(error => {
-                                    console.error('❌ Emergency startup failed:', error);
-                                    displayGameError('Game Boot Failed', 'The game failed to start even in emergency mode.', error.message);
-                                });
-                            } else {
-                                console.error('❌ Main game class not found');
-                                displayGameError('Game Engine Missing', 'The core game files failed to load properly.');
-                            }
-                        } catch (error) {
-                            console.error('❌ Emergency startup error:', error);
-                            displayGameError('Emergency Startup Failed', 'A critical error occurred.', error.message);
+                            // Create and start the REAL game with hybrid loader
+                            const game = new PirateBombGame();
+                            window.game = game;
+                            
+                            game.boot().then(() => {
+                                console.log('🏴‍☠️ HYBRID GAME LOADED: Real pirate sprites with fast loading!');
+                            }).catch(error => {
+                                console.error('❌ Hybrid game failed:', error);
+                                displayGameError('Game Boot Failed', 'The hybrid pirate game failed to start.', error.message);
+                            });
+                        } else {
+                            console.error('❌ Main game class not found');
+                            displayGameError('Game Engine Missing', 'The core game files failed to load properly.');
                         }
+                    } catch (error) {
+                        console.error('❌ Hybrid startup error:', error);
+                        displayGameError('Hybrid Startup Failed', 'A critical error occurred.', error.message);
                     }
                 };
                 
@@ -1889,8 +1882,8 @@
         }, 1000);
     </script>
     
-    <!-- EMERGENCY GAME ENGINE - REPLACED COMPLEX GAME.JS -->
-    <!-- <script src="game.js"></script> -->
+    <!-- HYBRID PIRATE LOADER WITH REAL GAME ENGINE -->
+    <!-- Real sprites with fast fallbacks, not emergency blocks -->
     
     <!-- Direct Sound Button Test -->
 
