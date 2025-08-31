@@ -1743,8 +1743,8 @@
         Your browser does not support the audio element.
     </audio>
     
-    <!-- SIMPLE EMERGENCY SYSTEM - JUST WORKS -->
-    <script src="game-emergency-fix.js"></script>
+    <!-- BACK TO ORIGINAL WORKING GAME -->
+    <script src="game.js"></script>
     
     <!-- Solana Web3.js with fallback -->
     <script>
@@ -1804,26 +1804,39 @@
                 console.error('❌ startGame still not available after 1 second!');
                 console.log('🔄 Attempting to force create startGame function...');
                 
-                // DIRECT EMERGENCY START - NO CHECKS, JUST WORK
+                // REAL GAME START - NO EMERGENCY BULLSHIT
                 window.startGame = function() {
-                    console.log('🚨 DIRECT EMERGENCY START ACTIVATED');
+                    console.log('🏴‍☠️ STARTING REAL PIRATE BOMB GAME');
                     
                     try {
                         // Hide welcome menu
                         const welcomeMenu = document.getElementById('welcomeMenu');
                         if (welcomeMenu) welcomeMenu.style.display = 'none';
                         
-                        // Show loading screen
-                        const loadingScreen = document.getElementById('loadingScreen');
-                        if (loadingScreen) loadingScreen.style.display = 'flex';
+                        // Wait for PirateBombGame class and start real game
+                        const checkAndStart = () => {
+                            if (typeof PirateBombGame !== 'undefined') {
+                                console.log('✅ PirateBombGame found, starting real game...');
+                                const game = new PirateBombGame();
+                                window.game = game;
+                                
+                                game.boot().then(() => {
+                                    console.log('🏴‍☠️ REAL PIRATE GAME LOADED!');
+                                }).catch(error => {
+                                    console.error('❌ Real game boot failed:', error);
+                                    alert('Game failed to start: ' + error.message);
+                                });
+                            } else {
+                                console.log('⚠️ Waiting for PirateBombGame class...');
+                                setTimeout(checkAndStart, 100);
+                            }
+                        };
                         
-                        // Start emergency game DIRECTLY
-                        console.log('🚨 Creating emergency game directly...');
-                        window.emergencyGame = new EmergencyPirateBombGame();
+                        checkAndStart();
                         
                     } catch (error) {
-                        console.error('🚨 Direct emergency failed:', error);
-                        alert('CRITICAL: Even direct emergency mode failed: ' + error.message);
+                        console.error('❌ Real game start failed:', error);
+                        alert('Critical error starting game: ' + error.message);
                     }
                 };
                 

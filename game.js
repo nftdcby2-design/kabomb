@@ -92,7 +92,20 @@ class OptimizedAssetLoader {
 			if (onProgress) onProgress(loaded, criticalSteps);
 		};
 
-		console.log('🚀 PHASE 1: Loading critical assets for instant play...');
+			console.log('🚀 PHASE 1: Loading critical assets for instant play...');
+			console.log('🔍 Testing sprite accessibility...');
+			
+			// Test if we can load a single sprite first
+			try {
+				const testSprite = await this.loadImage('Sprites/1-Player-Bomb Guy/1-Idle/1.png');
+				console.log('✅ Sprite test successful - sprites are accessible!');
+			} catch (error) {
+				console.error('❌ Sprite test failed - sprites not accessible:', error);
+				console.log('🎨 Using fallback sprites immediately');
+				this.createFallbackSprites();
+				if (onProgress) onProgress(criticalSteps, criticalSteps);
+				return this.assets;
+			}
 		
 		// Add overall timeout protection - if this takes more than 5 seconds, use fallbacks
 		const timeoutPromise = new Promise((resolve) => {
@@ -101,7 +114,7 @@ class OptimizedAssetLoader {
 				this.createFallbackSprites();
 				if (onProgress) onProgress(criticalSteps, criticalSteps);
 				resolve(this.assets);
-			}, 5000); // 5 second timeout
+			}, 15000); // 15 second timeout for production
 		});
 		
 		const loadingPromise = this.performCriticalLoading(onProgress, addProgress, criticalSteps);
@@ -126,16 +139,18 @@ class OptimizedAssetLoader {
 			const criticalPlayerAnims = ['1-Idle', '2-Run', '4-Jump', '5-Fall'];
 			for (const anim of criticalPlayerAnims) {
 				try {
+					console.log(`🏴‍☠️ Loading critical player sprite: ${playerManifest._base}/${anim}/1.png`);
 					// Load only first frame for immediate playability
 					const firstFrame = await Promise.race([
 						this.loadImage(`${playerManifest._base}/${anim}/1.png`),
-						new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
+						new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
 					]);
 					this.assets.player[anim] = [firstFrame];
-					console.log(`✅ Critical player ${anim} loaded`);
+					console.log(`✅ Real player sprite loaded: ${anim}`);
 				} catch (error) {
-					console.warn(`⚠️ Using fallback for ${anim}`);
-					this.assets.player[anim] = [];
+					console.warn(`⚠️ Failed to load player ${anim}:`, error.message);
+					console.log(`🎨 Creating fallback for player ${anim}`);
+					this.assets.player[anim] = [this.createSimpleFallback('#228B22', 'P')];
 				}
 				addProgress();
 			}
@@ -148,7 +163,7 @@ class OptimizedAssetLoader {
 					const enemyPath = `Sprites/${this.getEnemyFolderNumber(enemyName)}-Enemy-${enemyName}`;
 					const idleFrame = await Promise.race([
 						this.loadImage(`${enemyPath}/1-Idle/1.png`),
-						new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
+						new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
 					]);
 					this.assets.enemies[enemyName] = { '1-Idle': [idleFrame] };
 					console.log(`✅ Critical enemy ${enemyName} loaded`);
@@ -183,7 +198,7 @@ class OptimizedAssetLoader {
 			try {
 				const blocksImg = await Promise.race([
 					this.loadImage('Sprites/8-Tile-Sets/blocks.png'),
-					new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
+					new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
 				]);
 				this.assets.objects.tiles.blocks = blocksImg ? [blocksImg] : [];
 			} catch (error) {
