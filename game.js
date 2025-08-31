@@ -213,50 +213,34 @@ class AssetLoader {
 	async loadAll(onProgress) {
 		console.log('🚀 Using Advanced Game Assets Loader for ultra-fast loading...');
 		
-		// Use the new advanced assets loader
-		const advancedLoader = new GameAssetsLoader();
-		
-		// Load critical assets first (should take < 5 seconds)
-		const assets = await advancedLoader.loadCriticalAssets(onProgress);
-		
-		// Store the loader for future use
-		this.assetsLoader = advancedLoader;
-		
-		// Copy loaded assets to this instance
-		this.assets = assets;
-		
-		console.log('✅ Advanced loading completed - game ready!');
-		console.log('📊 Loader stats:', advancedLoader.getStats());
-		
-		return this.assets;
-	}
-		
 		try {
-			// Load only essential player animations with timeout
-		const playerManifest = this.getPlayerManifest();
-			this.assets.player = {};
+			// Use the new advanced assets loader
+			const advancedLoader = new GameAssetsLoader();
 			
-			// Load only the most important player animations
-			const essentialPlayerAnims = ['1-Idle', '2-Run', '4-Jump', '5-Fall', '7-Hit', '8-Dead Hit', '9-Dead Ground'];
-			for (const anim of essentialPlayerAnims) {
-				if (playerManifest[anim]) {
-					try {
-						console.log(`Loading player animation: ${anim} with ${playerManifest[anim]} frames from ${playerManifest._base}/${anim}`);
-						const frames = await Promise.race([
-							this.loadFrames(`${playerManifest._base}/${anim}`, playerManifest[anim]),
-							new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-						]);
-						console.log(`Successfully loaded ${anim}: ${frames.length} frames`);
-						this.assets.player[anim] = frames;
-					} catch (error) {
-						console.warn(`Failed to load player animation ${anim}:`, error);
-						this.assets.player[anim] = [];
-					}
-				} else {
-					console.warn(`Player animation ${anim} not found in manifest`);
-				}
-				addProgress(totalSteps);
-			}
+			// Load critical assets first (should take < 5 seconds)
+			const assets = await advancedLoader.loadCriticalAssets(onProgress);
+			
+			// Store the loader for future use
+			this.assetsLoader = advancedLoader;
+			
+			// Copy loaded assets to this instance
+			this.assets = assets;
+			
+			console.log('✅ Advanced loading completed - game ready!');
+			console.log('📊 Loader stats:', advancedLoader.getStats());
+			
+			return this.assets;
+		} catch (error) {
+			console.error('❌ Advanced loader failed, using fallbacks:', error);
+			
+			// Create fallback sprites for immediate gameplay
+			this.createFallbackSprites();
+			return this.assets;
+		}
+	}
+}
+	}
+
 
 			// Load all enemy animations
 			const enemiesManifest = this.getEnemiesManifest();
