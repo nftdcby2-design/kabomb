@@ -209,17 +209,24 @@ class AssetLoader {
 		};
 	}
 
-	// CRITICAL PERFORMANCE OPTIMIZATION - Use progressive loading
+	// ULTRA-FAST LOADING WITH ADVANCED ASSETS LOADER
 	async loadAll(onProgress) {
-		// Use optimized loader for critical performance
-		const optimizedLoader = new OptimizedAssetLoader();
-		optimizedLoader.getPlayerManifest = this.getPlayerManifest.bind(this);
+		console.log('🚀 Using Advanced Game Assets Loader for ultra-fast loading...');
 		
-		// Load critical assets first (reduces loading time from 3-5 minutes to 10-15 seconds)
-		const assets = await optimizedLoader.loadCriticalAssets(onProgress);
+		// Use the new advanced assets loader
+		const advancedLoader = new GameAssetsLoader();
+		
+		// Load critical assets first (should take < 5 seconds)
+		const assets = await advancedLoader.loadCriticalAssets(onProgress);
+		
+		// Store the loader for future use
+		this.assetsLoader = advancedLoader;
 		
 		// Copy loaded assets to this instance
 		this.assets = assets;
+		
+		console.log('✅ Advanced loading completed - game ready!');
+		console.log('📊 Loader stats:', advancedLoader.getStats());
 		
 		return this.assets;
 	}
@@ -619,7 +626,7 @@ class PirateBombGame {
 			this.assets = await loader.loadAll((loaded, total) => {
 				const progress = (loaded / total) * 100;
 				document.getElementById('loadingFill').style.width = progress + '%';
-				document.getElementById('loadingText').textContent = `Loading sprites... ${Math.round(progress)}%`;
+				document.getElementById('loadingText').textContent = `⚡ Ultra-fast loading... ${Math.round(progress)}%`;
 			});
 
 			console.log('Assets loaded, creating player...');
