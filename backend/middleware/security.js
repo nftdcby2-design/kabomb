@@ -1,5 +1,4 @@
 const helmet = require('helmet');
-const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { body, param, query, validationResult } = require('express-validator');
 const logger = require('../utils/logger');
