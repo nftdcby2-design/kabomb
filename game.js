@@ -239,9 +239,51 @@ class AssetLoader {
 		}
 	}
 }
+
+
+// ---------------------------
+// Game Core
+// ---------------------------
+class PirateBombGame {
+	constructor() {
+		this.assets = {};
 	}
 
+	createFallbackSprites() {
+		console.warn('Creating fallback sprites...');
 
+		this.assets.player = this.createFallback('player');
+		this.assets.enemies = {};
+		for (const type of ['Bald Pirate', 'Cucumber', 'Big Guy', 'Captain', 'Whale']) {
+			this.assets.enemies[type] = this.createFallback(`enemy-${type.toLowerCase()}`);
+		}
+	}
+
+	createFallback(name) {
+		const canvas = document.createElement('canvas');
+		const ctx = canvas.getContext('2d');
+		ctx.fillStyle = 'red';
+		ctx.fillRect(0, 0, 100, 100);
+		ctx.font = '24px Arial';
+		ctx.fillStyle = 'white';
+		ctx.textAlign = 'center';
+		ctx.fillText(name, 50, 60);
+
+		return canvas;
+	}
+
+	getEnemiesManifest() {
+		return {
+			'Bald Pirate': 'assets/enemies/bald_pirate.png',
+			Cucumber: 'assets/enemies/cucumber.png',
+			'Big Guy': 'assets/enemies/big_guy.png',
+			Captain: 'assets/enemies/captain.png',
+			Whale: 'assets/enemies/whale.png',
+		};
+	}
+
+	async loadAssets() {
+		try {
 			// Load all enemy animations
 			const enemiesManifest = this.getEnemiesManifest();
 			this.assets.enemies = {};
