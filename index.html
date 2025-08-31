@@ -1743,11 +1743,25 @@
         Your browser does not support the audio element.
     </audio>
     
-    <!-- Solana Web3.js -->
     <!-- Game Optimization Scripts -->
     <script src="game-optimized.js"></script>
     <script src="game-assets-loader.js"></script>
-    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    
+    <!-- Solana Web3.js with fallback -->
+    <script>
+        // Create a fallback for Web3 if CDN fails
+        window.web3LoadTimeout = setTimeout(() => {
+            if (typeof window.solanaWeb3 === 'undefined') {
+                console.warn('⚠️ Solana Web3.js CDN failed to load, using fallback');
+                window.solanaWeb3 = { Connection: function() {}, PublicKey: function() {} };
+                window.web3Ready = true;
+            }
+        }, 5000);
+    </script>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js" 
+            onload="clearTimeout(window.web3LoadTimeout); console.log('✅ Solana Web3.js loaded successfully');" 
+            onerror="console.error('❌ Failed to load Solana Web3.js from CDN'); clearTimeout(window.web3LoadTimeout); window.solanaWeb3 = {}; window.web3Ready = true;"></script>
+    
     <script src="web3/wallet-connection.js"></script>
     <script src="web3/reward-system.js"></script>
     <script src="web3/player-registry-client.js"></script>
@@ -2029,7 +2043,14 @@
                 
 
                 
-                // Mark Web3 as ready
+                // Mark Web3 as ready with timeout fallback
+                setTimeout(() => {
+                    if (!window.web3Ready) {
+                        console.warn('⚠️ Web3 initialization taking too long, starting game anyway...');
+                        window.web3Ready = true;
+                    }
+                }, 3000); // 3 second timeout
+                
                 window.web3Ready = true;
                 console.log('✅ Web3 components initialized successfully');
                 
@@ -2067,7 +2088,21 @@
                 
             } catch (error) {
                 console.error('❌ Error initializing Web3 components:', error);
-                alert('Error initializing Web3 components: ' + error.message);
+                console.warn('⚠️ Starting game without full Web3 integration...');
+                
+                // Mark Web3 as ready even if there were errors
+                window.web3Ready = true;
+                
+                // Initialize minimal systems for game to work
+                try {
+                    initializeRechargeSystem();
+                    initializeSettingsPanel();
+                } catch (fallbackError) {
+                    console.error('❌ Even fallback initialization failed:', fallbackError);
+                }
+                
+                // Don't show alert - let the game try to start
+                // alert('Error initializing Web3 components: ' + error.message);
             }
         });
         
