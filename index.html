@@ -1743,9 +1743,9 @@
         Your browser does not support the audio element.
     </audio>
     
-    <!-- HYBRID PIRATE LOADER - REAL SPRITES + FAST LOADING -->
+    <!-- HYBRID PIRATE LOADER WITH REAL GAME ENGINE -->
     <script src="game-hybrid-loader.js"></script>
-    <script src="game.js"></script>
+    <script src="game.js" onload="console.log('✅ game.js loaded successfully'); console.log('🔍 PirateBombGame type:', typeof PirateBombGame);" onerror="console.error('❌ Failed to load game.js');"></script>
     
     <!-- Solana Web3.js with fallback -->
     <script>
@@ -1805,37 +1805,52 @@
                 console.error('❌ startGame still not available after 1 second!');
                 console.log('🔄 Attempting to force create startGame function...');
                 
-                // Create HYBRID startGame function - REAL sprites with fast loading
+                // Create HYBRID startGame function with game class detection
                 window.startGame = function() {
                     console.log('🏴‍☠️ HYBRID START: Loading real pirate sprites with fast fallbacks!');
                     
-                    try {
-                        // Hide welcome menu
-                        const welcomeMenu = document.getElementById('welcomeMenu');
-                        if (welcomeMenu) welcomeMenu.style.display = 'none';
+                    // Function to check for game class and start
+                    const attemptGameStart = (attempt = 1, maxAttempts = 5) => {
+                        console.log(`🔍 Attempt ${attempt}/${maxAttempts}: Checking for PirateBombGame class...`);
+                        console.log('PirateBombGame type:', typeof PirateBombGame);
                         
-                        // Check if main game class exists
                         if (typeof PirateBombGame !== 'undefined') {
-                            console.log('✅ Main game class found, starting REAL pirate game...');
+                            console.log('✅ PirateBombGame class found! Starting real pirate game...');
                             
-                            // Create and start the REAL game with hybrid loader
-                            const game = new PirateBombGame();
-                            window.game = game;
+                            try {
+                                // Hide welcome menu
+                                const welcomeMenu = document.getElementById('welcomeMenu');
+                                if (welcomeMenu) welcomeMenu.style.display = 'none';
+                                
+                                // Create and start the REAL game with hybrid loader
+                                const game = new PirateBombGame();
+                                window.game = game;
+                                
+                                game.boot().then(() => {
+                                    console.log('🏴‍☠️ HYBRID GAME LOADED: Real pirate sprites with fast loading!');
+                                }).catch(error => {
+                                    console.error('❌ Hybrid game failed:', error);
+                                    displayGameError('Game Boot Failed', 'The hybrid pirate game failed to start.', error.message);
+                                });
+                                
+                            } catch (error) {
+                                console.error('❌ Error creating PirateBombGame:', error);
+                                displayGameError('Game Creation Failed', 'Failed to create game instance.', error.message);
+                            }
                             
-                            game.boot().then(() => {
-                                console.log('🏴‍☠️ HYBRID GAME LOADED: Real pirate sprites with fast loading!');
-                            }).catch(error => {
-                                console.error('❌ Hybrid game failed:', error);
-                                displayGameError('Game Boot Failed', 'The hybrid pirate game failed to start.', error.message);
-                            });
+                        } else if (attempt < maxAttempts) {
+                            console.warn(`⚠️ PirateBombGame not ready yet, waiting 500ms... (attempt ${attempt}/${maxAttempts})`);
+                            setTimeout(() => attemptGameStart(attempt + 1, maxAttempts), 500);
+                            
                         } else {
-                            console.error('❌ Main game class not found');
-                            displayGameError('Game Engine Missing', 'The core game files failed to load properly.');
+                            console.error('❌ PirateBombGame class not found after all attempts');
+                            console.log('🔍 Available global classes:', Object.keys(window).filter(key => typeof window[key] === 'function' && key.includes('Game')));
+                            displayGameError('Game Engine Missing', 'The PirateBombGame class failed to load after multiple attempts.');
                         }
-                    } catch (error) {
-                        console.error('❌ Hybrid startup error:', error);
-                        displayGameError('Hybrid Startup Failed', 'A critical error occurred.', error.message);
-                    }
+                    };
+                    
+                    // Start the detection process
+                    attemptGameStart();
                 };
                 
                 // Also create the displayGameError function if it doesn't exist

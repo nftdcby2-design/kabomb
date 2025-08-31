@@ -314,12 +314,28 @@ class HybridPirateLoader {
     }
 }
 
-// Replace OptimizedAssetLoader with HybridPirateLoader
-class OptimizedAssetLoader extends HybridPirateLoader {
-    constructor() {
-        super();
-        console.log('🏴‍☠️ Hybrid Pirate Loader initialized (replacing OptimizedAssetLoader)');
+// Replace OptimizedAssetLoader with HybridPirateLoader - ONLY if not already defined
+if (typeof OptimizedAssetLoader === 'undefined') {
+    class OptimizedAssetLoader extends HybridPirateLoader {
+        constructor() {
+            super();
+            console.log('🏴‍☠️ Hybrid Pirate Loader initialized (replacing OptimizedAssetLoader)');
+        }
     }
+} else {
+    console.log('🏴‍☠️ OptimizedAssetLoader already exists, using HybridPirateLoader directly');
+    // Replace the existing loader methods
+    OptimizedAssetLoader.prototype.loadAll = HybridPirateLoader.prototype.loadAll;
+    OptimizedAssetLoader.prototype.loadImageWithRetry = HybridPirateLoader.prototype.loadImageWithRetry;
+    OptimizedAssetLoader.prototype.createImagePromise = HybridPirateLoader.prototype.createImagePromise;
+    OptimizedAssetLoader.prototype.storeSprite = HybridPirateLoader.prototype.storeSprite;
+    OptimizedAssetLoader.prototype.createEnhancedFallback = HybridPirateLoader.prototype.createEnhancedFallback;
+    OptimizedAssetLoader.prototype.drawPirateFallback = HybridPirateLoader.prototype.drawPirateFallback;
+    OptimizedAssetLoader.prototype.drawBombFallback = HybridPirateLoader.prototype.drawBombFallback;
+    OptimizedAssetLoader.prototype.drawTileFallback = HybridPirateLoader.prototype.drawTileFallback;
+    OptimizedAssetLoader.prototype.buildCompleteAssets = HybridPirateLoader.prototype.buildCompleteAssets;
+    OptimizedAssetLoader.prototype.createGenericSprite = HybridPirateLoader.prototype.createGenericSprite;
+    console.log('🏴‍☠️ OptimizedAssetLoader enhanced with pirate loading capabilities');
 }
 
 console.log('🏴‍☠️ Hybrid Pirate Loader ready - real sprites with fast fallbacks!');
