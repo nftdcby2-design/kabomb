@@ -1804,17 +1804,26 @@
                 console.error('❌ startGame still not available after 1 second!');
                 console.log('🔄 Attempting to force create startGame function...');
                 
-                // SIMPLE EMERGENCY START - NO COMPLEX CHECKS
+                // DIRECT EMERGENCY START - NO CHECKS, JUST WORK
                 window.startGame = function() {
-                    console.log('🚨 SIMPLE EMERGENCY START - GUARANTEED TO WORK');
+                    console.log('🚨 DIRECT EMERGENCY START ACTIVATED');
                     
-                    // Use emergency game system immediately
-                    if (typeof window.emergencyStartGame === 'function') {
-                        console.log('✅ Starting emergency game - will work 100%');
-                        window.emergencyStartGame();
-                    } else {
-                        console.error('❌ Emergency function not available');
-                        alert('Critical Error: Emergency system failed to load. Please refresh the page.');
+                    try {
+                        // Hide welcome menu
+                        const welcomeMenu = document.getElementById('welcomeMenu');
+                        if (welcomeMenu) welcomeMenu.style.display = 'none';
+                        
+                        // Show loading screen
+                        const loadingScreen = document.getElementById('loadingScreen');
+                        if (loadingScreen) loadingScreen.style.display = 'flex';
+                        
+                        // Start emergency game DIRECTLY
+                        console.log('🚨 Creating emergency game directly...');
+                        window.emergencyGame = new EmergencyPirateBombGame();
+                        
+                    } catch (error) {
+                        console.error('🚨 Direct emergency failed:', error);
+                        alert('CRITICAL: Even direct emergency mode failed: ' + error.message);
                     }
                 };
                 
