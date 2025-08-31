@@ -54,15 +54,21 @@ class GameAssetsLoader {
         const total = criticalAssets.length;
 
         // Create fallback sprites immediately
+        console.log('🎨 Creating instant fallbacks...');
         this.createInstantFallbacks();
+        console.log('✅ Fallback sprites created');
+        if (onProgress) onProgress(1, total + 2); // +2 for fallbacks and build steps
 
         // Load critical assets with timeout protection
-        const loadPromises = criticalAssets.map(async (asset) => {
+        console.log('💾 Starting asset loading with timeout protection...');
+        const loadPromises = criticalAssets.map(async (asset, index) => {
             try {
+                console.log(`📎 Loading critical asset ${index + 1}/${total}: ${asset.id} from ${asset.path}`);
+                
                 const img = await Promise.race([
                     this.loadSingleAsset(asset.path),
                     new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Timeout')), 2000)
+                        setTimeout(() => reject(new Error('Timeout')), 5000) // Increased timeout to 5 seconds
                     )
                 ]);
                 
@@ -70,29 +76,48 @@ class GameAssetsLoader {
                 console.log(`✅ Critical asset loaded: ${asset.id}`);
                 
                 loaded++;
-                if (onProgress) onProgress(loaded, total);
+                if (onProgress) onProgress(loaded + 1, total + 2); // +1 for fallbacks
                 
                 return img;
             } catch (error) {
-                console.warn(`⚠️ Critical asset failed, using fallback: ${asset.id}`);
+                console.warn(`⚠️ Critical asset failed, using fallback: ${asset.id} - ${error.message}`);
                 const fallback = this.getFallbackSprite(asset.id);
                 this.assets.set(asset.id, fallback);
                 
                 loaded++;
-                if (onProgress) onProgress(loaded, total);
+                if (onProgress) onProgress(loaded + 1, total + 2); // +1 for fallbacks
                 
                 return fallback;
             }
         });
 
-        await Promise.allSettled(loadPromises);
+        // Wait for all assets to load or fallback
+        console.log('🔄 Waiting for all critical assets to complete...');
+        const results = await Promise.allSettled(loadPromises);
         
-        console.log('🎮 CRITICAL ASSETS READY - Game can start!');
+        // Log results
+        const successful = results.filter(r => r.status === 'fulfilled').length;
+        console.log(`🎮 CRITICAL ASSETS READY - ${successful}/${total} loaded successfully!`);
+        
+        // Ensure we have all required assets (either loaded or fallback)
+        for (const asset of criticalAssets) {
+            if (!this.assets.has(asset.id)) {
+                console.warn(`⚠️ Missing critical asset ${asset.id}, creating emergency fallback`);
+                this.assets.set(asset.id, this.getFallbackSprite(asset.id));
+            }
+        }
         
         // Start background loading immediately
+        console.log('📺 Starting background loading process...');
         setTimeout(() => this.startBackgroundLoading(), 100);
         
-        return this.buildGameAssets();
+        // Build final game assets
+        console.log('🔧 Building game assets structure...');
+        const gameAssets = this.buildGameAssets();
+        if (onProgress) onProgress(total + 2, total + 2); // Complete
+        console.log('✅ Game assets build completed!');
+        
+        return gameAssets;
     }
 
     /**
@@ -408,48 +433,119 @@ class GameAssetsLoader {
      * Build game assets in expected format
      */
     buildGameAssets() {
+        console.log('🔄 Building game assets in expected format...');
+        
         const gameAssets = {
             player: {},
             enemies: {},
             objects: {}
         };
 
-        // Map loaded assets to game format
+        // Map loaded assets to game format with enhanced fallbacks
+        console.log('🔍 Available assets for mapping:', Array.from(this.assets.keys()));
+        
+        // Player assets - ensure all essential animations are available
         if (this.assets.has('player_idle_full')) {
             gameAssets.player['1-Idle'] = this.assets.get('player_idle_full');
-        } else {
+        } else if (this.assets.has('player_idle')) {
             gameAssets.player['1-Idle'] = [this.assets.get('player_idle')];
+        } else {
+            console.warn('⚠️ No player idle asset found, using fallback');
+            gameAssets.player['1-Idle'] = [this.getFallbackSprite('player_idle')];
         }
 
         if (this.assets.has('player_run_full')) {
             gameAssets.player['2-Run'] = this.assets.get('player_run_full');
-        } else {
+        } else if (this.assets.has('player_run')) {
             gameAssets.player['2-Run'] = [this.assets.get('player_run')];
+        } else {
+            console.warn('⚠️ No player run asset found, using idle as fallback');
+            gameAssets.player['2-Run'] = gameAssets.player['1-Idle'];
         }
 
         if (this.assets.has('player_jump')) {
             gameAssets.player['4-Jump'] = this.assets.get('player_jump');
         } else {
-            gameAssets.player['4-Jump'] = [this.assets.get('player_idle')];
+            console.warn('⚠️ No player jump asset found, using idle as fallback');
+            gameAssets.player['4-Jump'] = gameAssets.player['1-Idle'];
         }
 
-        gameAssets.player['5-Fall'] = [this.assets.get('player_idle')];
+        // Add missing essential player animations using existing ones as fallbacks
+        gameAssets.player['5-Fall'] = gameAssets.player['4-Jump']; // Use jump for fall
+        gameAssets.player['3-Jump Anticipation'] = [gameAssets.player['1-Idle'][0]]; // Use idle frame
+        gameAssets.player['6-Ground'] = gameAssets.player['1-Idle']; // Use idle animation
+        gameAssets.player['7-Hit'] = gameAssets.player['1-Idle']; // Use idle animation
+        gameAssets.player['8-Dead Hit'] = gameAssets.player['1-Idle']; // Use idle animation
+        gameAssets.player['9-Dead Ground'] = gameAssets.player['1-Idle']; // Use idle animation
+        gameAssets.player['10-Door In'] = gameAssets.player['1-Idle']; // Use idle for door
+        gameAssets.player['11-Door Out'] = gameAssets.player['1-Idle']; // Use idle for door
 
-        // Enemy assets
-        gameAssets.enemies['Bald Pirate'] = {};
-        if (this.assets.has('enemy_idle_full')) {
-            gameAssets.enemies['Bald Pirate']['1-Idle'] = this.assets.get('enemy_idle_full');
-        } else {
-            gameAssets.enemies['Bald Pirate']['1-Idle'] = [this.assets.get('enemy_basic')];
+        // Enemy assets - create proper structure for all enemy types
+        const enemyTypes = ['Bald Pirate', 'Cucumber', 'Big Guy', 'Captain', 'Whale'];
+        
+        for (const enemyName of enemyTypes) {
+            gameAssets.enemies[enemyName] = {};
+            
+            // Get enemy idle animation
+            let enemyIdleFrames;
+            if (this.assets.has('enemy_idle_full')) {
+                enemyIdleFrames = this.assets.get('enemy_idle_full');
+            } else if (this.assets.has('enemy_basic')) {
+                enemyIdleFrames = [this.assets.get('enemy_basic')];
+            } else {
+                enemyIdleFrames = [this.getFallbackSprite('enemy_basic')];
+            }
+            
+            // Set idle animation
+            gameAssets.enemies[enemyName]['1-Idle'] = enemyIdleFrames;
+            
+            // Add all essential enemy animations using idle as fallback
+            const essentialEnemyAnims = [
+                '2-Run', '3-Jump Anticipation', '4-Jump', '5-Fall', '6-Ground',
+                '7-Attack', '8-Hit', '9-Dead Hit', '10-Dead Ground',
+                '11-Throw (Bomb)', '12-Hit', '13-Dead Hit', '14-Dead Ground'
+            ];
+            
+            for (const anim of essentialEnemyAnims) {
+                gameAssets.enemies[enemyName][anim] = enemyIdleFrames;
+            }
+            
+            // Add special animations for specific enemies
+            if (enemyName === 'Cucumber') {
+                gameAssets.enemies[enemyName]['8-Blow the wick'] = enemyIdleFrames;
+                gameAssets.enemies[enemyName]['11-Dead Ground'] = enemyIdleFrames;
+            }
+            
+            if (enemyName === 'Big Guy') {
+                gameAssets.enemies[enemyName]['8-Pick (Bomb)'] = enemyIdleFrames;
+                gameAssets.enemies[enemyName]['9-Idle (Bomb)'] = enemyIdleFrames;
+                gameAssets.enemies[enemyName]['10-Run (Bomb)'] = enemyIdleFrames;
+            }
+            
+            if (enemyName === 'Captain') {
+                gameAssets.enemies[enemyName]['8-Scare Run'] = enemyIdleFrames;
+            }
+            
+            if (enemyName === 'Whale') {
+                gameAssets.enemies[enemyName]['8-Swalow (Bomb)'] = enemyIdleFrames;
+                gameAssets.enemies[enemyName]['11-Dead Ground'] = enemyIdleFrames;
+            }
         }
 
-        // Object assets
+        // Object assets - ensure proper structure
         gameAssets.objects = {
             '1-BOMB': {
-                '1-Bomb Off': [this.assets.get('bomb_basic')]
+                '1-Bomb Off': this.assets.has('bomb_basic') ? [this.assets.get('bomb_basic')] : [this.getFallbackSprite('bomb_basic')],
+                '2-Bomb On': this.assets.has('bomb_basic') ? [this.assets.get('bomb_basic')] : [this.getFallbackSprite('bomb_basic')],
+                '3-Explotion': this.assets.has('bomb_basic') ? [this.assets.get('bomb_basic')] : [this.getFallbackSprite('bomb_basic')]
+            },
+            '2-Door': {
+                '1-Closed': this.assets.has('bomb_basic') ? [this.assets.get('bomb_basic')] : [this.getFallbackSprite('bomb_basic')],
+                '2-Opening': this.assets.has('bomb_basic') ? [this.assets.get('bomb_basic')] : [this.getFallbackSprite('bomb_basic')],
+                '3-Closing': this.assets.has('bomb_basic') ? [this.assets.get('bomb_basic')] : [this.getFallbackSprite('bomb_basic')]
             },
             'tiles': {
-                'blocks': [this.assets.get('tiles_basic')]
+                'blocks': this.assets.has('tiles_basic') ? [this.assets.get('tiles_basic')] : [this.getFallbackSprite('tiles_basic')]
             }
         };
 
@@ -460,7 +556,17 @@ class GameAssetsLoader {
         if (this.assets.has('tiles_level3')) {
             gameAssets.objects.tiles['block3'] = [this.assets.get('tiles_level3')];
         }
-
+        
+        // Add backgrounds section
+        gameAssets.backgrounds = {};
+        
+        console.log('✅ Game assets built successfully!');
+        console.log('🔍 Assets structure:', {
+            player: Object.keys(gameAssets.player),
+            enemies: Object.keys(gameAssets.enemies),
+            objects: Object.keys(gameAssets.objects)
+        });
+        
         return gameAssets;
     }
 
