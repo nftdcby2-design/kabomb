@@ -60,20 +60,20 @@ service cloud.firestore {
 
 Create a collection called `gameAssets` with a document named `assetList` containing the following structure:
 
-```json
+```
 {
   "critical": {
     "player": {
-      "1-Idle": { "path": "Sprites/1-Player-Bomb Guy/1-Idle", "count": 26 },
-      "2-Run": { "path": "Sprites/1-Player-Bomb Guy/2-Run", "count": 14 },
-      "4-Jump": { "path": "Sprites/1-Player-Bomb Guy/4-Jump", "count": 4 },
+      "1-Idle": { "path": "Sprites/1-Player-Bomb Guy/1-Idle", "count": 2 },
+      "2-Run": { "path": "Sprites/1-Player-Bomb Guy/2-Run", "count": 6 },
+      "4-Jump": { "path": "Sprites/1-Player-Bomb Guy/4-Jump", "count": 1 },
       "5-Fall": { "path": "Sprites/1-Player-Bomb Guy/5-Fall", "count": 2 }
     },
     "enemies": {
       "Bald Pirate": {
-        "1-Idle": { "path": "Sprites/2-Enemy-Bald Pirate/1-Idle", "count": 34 },
-        "2-Run": { "path": "Sprites/2-Enemy-Bald Pirate/2-Run", "count": 14 },
-        "4-Jump": { "path": "Sprites/2-Enemy-Bald Pirate/4-Jump", "count": 4 }
+        "1-Idle": { "path": "Sprites/2-Enemy-Bald Pirate/1-Idle", "count": 1 },
+        "2-Run": { "path": "Sprites/2-Enemy-Bald Pirate/2-Run", "count": 4 },
+        "4-Jump": { "path": "Sprites/2-Enemy-Bald Pirate/4-Jump", "count": 1 }
       }
     },
     "objects": {
@@ -89,26 +89,26 @@ Create a collection called `gameAssets` with a document named `assetList` contai
   "lazy": {
     "player": {
       "3-Jump Anticipation": { "path": "Sprites/1-Player-Bomb Guy/3-Jump Anticipation", "count": 1 },
-      "6-Ground": { "path": "Sprites/1-Player-Bomb Guy/6-Ground", "count": 3 },
-      "7-Hit": { "path": "Sprites/1-Player-Bomb Guy/7-Hit", "count": 8 },
-      "8-Dead Hit": { "path": "Sprites/1-Player-Bomb Guy/8-Dead Hit", "count": 6 },
-      "9-Dead Ground": { "path": "Sprites/1-Player-Bomb Guy/9-Dead Ground", "count": 4 },
-      "10-Door In": { "path": "Sprites/1-Player-Bomb Guy/10-Door In", "count": 16 },
-      "11-Door Out": { "path": "Sprites/1-Player-Bomb Guy/11-Door Out", "count": 16 }
+      "6-Ground": { "path": "Sprites/1-Player-Bomb Guy/6-Ground", "count": 1 },
+      "7-Hit": { "path": "Sprites/1-Player-Bomb Guy/7-Hit", "count": 2 },
+      "8-Dead Hit": { "path": "Sprites/1-Player-Bomb Guy/8-Dead Hit", "count": 1 },
+      "9-Dead Ground": { "path": "Sprites/1-Player-Bomb Guy/9-Dead Ground", "count": 1 },
+      "10-Door In": { "path": "Sprites/1-Player-Bomb Guy/10-Door In", "count": 1 },
+      "11-Door Out": { "path": "Sprites/1-Player-Bomb Guy/11-Door Out", "count": 1 }
     },
     "enemies": {
       "Bald Pirate": {
         "3-Jump Anticipation": { "path": "Sprites/2-Enemy-Bald Pirate/3-Jump Anticipation", "count": 1 },
         "5-Fall": { "path": "Sprites/2-Enemy-Bald Pirate/5-Fall", "count": 2 },
         "6-Ground": { "path": "Sprites/2-Enemy-Bald Pirate/6-Ground", "count": 3 },
-        "7-Attack": { "path": "Sprites/2-Enemy-Bald Pirate/7-Attack", "count": 12 },
-        "8-Hit": { "path": "Sprites/2-Enemy-Bald Pirate/8-Hit", "count": 8 },
-        "9-Dead Hit": { "path": "Sprites/2-Enemy-Bald Pirate/9-Dead Hit", "count": 6 },
-        "10-Dead Ground": { "path": "Sprites/2-Enemy-Bald Pirate/10-Dead Ground", "count": 4 }
+        "7-Attack": { "path": "Sprites/2-Enemy-Bald Pirate/7-Attack", "count": 4 },
+        "8-Hit": { "path": "Sprites/2-Enemy-Bald Pirate/8-Hit", "count": 2 },
+        "9-Dead Hit": { "path": "Sprites/2-Enemy-Bald Pirate/9-Dead Hit", "count": 2 },
+        "10-Dead Ground": { "path": "Sprites/2-Enemy-Bald Pirate/10-Dead Ground", "count": 1 }
       },
       "Cucumber": {
-        "1-Idle": { "path": "Sprites/3-Enemy-Cucumber/1-Idle", "count": 36 },
-        "2-Run": { "path": "Sprites/3-Enemy-Cucumber/2-Run", "count": 12 }
+        "1-Idle": { "path": "Sprites/3-Enemy-Cucumber/1-Idle", "count": 1 },
+        "2-Run": { "path": "Sprites/3-Enemy-Cucumber/2-Run", "count": 3 }
       }
     }
   }

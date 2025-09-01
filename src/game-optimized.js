@@ -291,17 +291,17 @@ class OptimizedAssetLoader {
 	getPlayerManifest() {
 		const base = 'Sprites/1-Player-Bomb Guy';
 		return {
-			'1-Idle': 26,
-			'2-Run': 14,
+			'1-Idle': 2,
+			'2-Run': 6,
 			'3-Jump Anticipation': 1,
-			'4-Jump': 4,
+			'4-Jump': 1,
 			'5-Fall': 2,
-			'6-Ground': 3,
-			'7-Hit': 8,
-			'8-Dead Hit': 6,
-			'9-Dead Ground': 4,
-			'10-Door In': 16,
-			'11-Door Out': 16,
+			'6-Ground': 1,
+			'7-Hit': 2,
+			'8-Dead Hit': 1,
+			'9-Dead Ground': 1,
+			'10-Door In': 1,
+			'11-Door Out': 1,
 			_base: base
 		};
 	}

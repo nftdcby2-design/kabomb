@@ -59,17 +59,17 @@ class AssetLoader {
 	getPlayerManifest() {
 		const base = 'Sprites/1-Player-Bomb Guy';
 		return {
-			'1-Idle': 26,
-			'2-Run': 14,
+			'1-Idle': 2,  // Updated from 26 to match actual files
+			'2-Run': 6,   // Updated from 14 to match actual files
 			'3-Jump Anticipation': 1,
-			'4-Jump': 4,
+			'4-Jump': 1,  // Updated from 4 to match actual files
 			'5-Fall': 2,
-			'6-Ground': 3,
-			'7-Hit': 8,
-			'8-Dead Hit': 6,
-			'9-Dead Ground': 4,
-			'10-Door In': 16,
-			'11-Door Out': 16,
+			'6-Ground': 1,  // Updated from 3 to match actual files
+			'7-Hit': 2,   // Updated from 8 to match actual files
+			'8-Dead Hit': 1,  // Updated from 6 to match actual files
+			'9-Dead Ground': 1,  // Updated from 4 to match actual files
+			'10-Door In': 1,  // Updated from 16 to match actual files
+			'11-Door Out': 1,  // Updated from 16 to match actual files
 			_base: base
 		};
 	}
@@ -79,75 +79,75 @@ class AssetLoader {
 		return {
 			'Bald Pirate': {
 				base: 'Sprites/2-Enemy-Bald Pirate',
-				'1-Idle': 34,
-				'2-Run': 14,
+				'1-Idle': 1,   // Updated from 34 to match actual files
+				'2-Run': 4,    // Updated from 14 to match actual files
 				'3-Jump Anticipation': 1,
-				'4-Jump': 4,
+				'4-Jump': 1,   // Updated from 4 to match actual files
 				'5-Fall': 2,
 				'6-Ground': 3,
-				'7-Attack': 12,
-				'8-Hit': 8,
-				'9-Dead Hit': 6,
-				'10-Dead Ground': 4
+				'7-Attack': 4, // Updated from 12 to match actual files
+				'8-Hit': 2,    // Updated from 8 to match actual files
+				'9-Dead Hit': 2,  // Updated from 6 to match actual files
+				'10-Dead Ground': 1  // Updated from 4 to match actual files
 			},
 			'Cucumber': {
 				base: 'Sprites/3-Enemy-Cucumber',
-				'1-Idle': 36,
-				'2-Run': 12,
+				'1-Idle': 1,   // Updated from 36 to match actual files
+				'2-Run': 3,    // Updated from 12 to match actual files
 				'3-Jump Anticipation': 1,
-				'4-Jump': 4,
+				'4-Jump': 2,   // Updated from 4 to match actual files
 				'5-Fall': 2,
 				'6-Ground': 3,
-				'7-Attack': 11,
-				'8-Blow the wick': 11,
-				'9-Hit': 8,
-				'10-Dead Hit': 6,
-				'11-Dead Ground': 4
+				'7-Attack': 3, // Updated from 11 to match actual files
+				'8-Blow the wick': 2, // Updated from 11 to match actual files
+				'9-Hit': 3,    // Updated from 8 to match actual files
+				'10-Dead Hit': 6,  // Updated from 6 to match actual files
+				'11-Dead Ground': 1  // Updated from 4 to match actual files
 			},
 			'Big Guy': {
 				base: 'Sprites/4-Enemy-Big Guy',
-				'1-Idle': 38,
-				'2-Run': 16,
+				'1-Idle': 1,   // Updated from 38 to match actual files
+				'2-Run': 1,    // Updated from 16 to match actual files
 				'3-Jump Anticipation': 1,
-				'4-Jump': 4,
-				'5-Fall': 2,
-				'6-Ground': 3,
-				'7-Attack': 11,
-				'8-Pick (Bomb)': 8,
+				'4-Jump': 1,   // Updated from 4 to match actual files
+				'5-Fall': 1,   // Updated from 2 to match actual files
+				'6-Ground': 1, // Updated from 3 to match actual files
+				'7-Attack': 1, // Updated from 11 to match actual files
+				'8-Pick (Bomb)': 1, // Updated from 8 to match actual files
 				'9-Idle (Bomb)': 1,
-				'10-Run (Bomb)': 16,
-				'11-Throw (Bomb)': 11,
-				'12-Hit': 8,
-				'13-Dead Hit': 6,
-				'14-Dead Ground': 4
+				'10-Run (Bomb)': 1, // Updated from 16 to match actual files
+				'11-Throw (Bomb)': 1, // Updated from 11 to match actual files
+				'12-Hit': 1,   // Updated from 8 to match actual files
+				'13-Dead Hit': 1,  // Updated from 6 to match actual files
+				'14-Dead Ground': 1  // Updated from 4 to match actual files
 			},
 			'Captain': {
 				base: 'Sprites/5-Enemy-Captain',
-				'1-Idle': 32,
-				'2-Run': 14,
+				'1-Idle': 1,   // Updated from 32 to match actual files
+				'2-Run': 1,    // Updated from 14 to match actual files
 				'3-Jump Anticipation': 1,
-				'4-Jump': 4,
-				'5-Fall': 2,
-				'6-Ground': 3,
-				'7-Attack': 7,
-				'8-Scare Run': 12,
-				'9-Hit': 8,
-				'10-Dead Hit': 6,
-				'11-Dead Ground': 4
+				'4-Jump': 1,   // Updated from 4 to match actual files
+				'5-Fall': 1,   // Updated from 2 to match actual files
+				'6-Ground': 1, // Updated from 3 to match actual files
+				'7-Attack': 1, // Updated from 7 to match actual files
+				'8-Scare Run': 1, // Updated from 12 to match actual files
+				'9-Hit': 1,    // Updated from 8 to match actual files
+				'10-Dead Hit': 1,  // Updated from 6 to match actual files
+				'11-Dead Ground': 1  // Updated from 4 to match actual files
 			},
 			'Whale': {
 				base: 'Sprites/6-Enemy-Whale',
-				'1-Idle': 44,
-				'2-Run': 14,
+				'1-Idle': 1,   // Updated from 44 to match actual files
+				'2-Run': 1,    // Updated from 14 to match actual files
 				'3-Jump Anticipation': 1,
-				'4-Jump': 4,
-				'5-Fall': 2,
-				'6-Ground': 3,
-				'7-Attack': 11,
-				'8-Swalow (Bomb)': 10,
-				'9-Hit': 7,
-				'10-Dead Hit': 6,
-				'11-Dead Ground': 4
+				'4-Jump': 1,   // Updated from 4 to match actual files
+				'5-Fall': 1,   // Updated from 2 to match actual files
+				'6-Ground': 1, // Updated from 3 to match actual files
+				'7-Attack': 1, // Updated from 11 to match actual files
+				'8-Swalow (Bomb)': 1, // Updated from 10 to match actual files
+				'9-Hit': 1,    // Updated from 7 to match actual files
+				'10-Dead Hit': 1,  // Updated from 6 to match actual files
+				'11-Dead Ground': 1  // Updated from 4 to match actual files
 			}
 		};
 	}

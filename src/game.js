@@ -97,17 +97,17 @@ class AssetLoader {
 	getPlayerManifest() {
 		const base = 'Sprites/1-Player-Bomb Guy';
 		return {
-			'1-Idle': 26,
-			'2-Run': 14,
+			'1-Idle': 2,
+			'2-Run': 6,
 			'3-Jump Anticipation': 1,
-			'4-Jump': 4,
+			'4-Jump': 1,
 			'5-Fall': 2,
-			'6-Ground': 3,
-			'7-Hit': 8,
-			'8-Dead Hit': 6,
-			'9-Dead Ground': 4,
-			'10-Door In': 16,
-			'11-Door Out': 16,
+			'6-Ground': 1,
+			'7-Hit': 2,
+			'8-Dead Hit': 1,
+			'9-Dead Ground': 1,
+			'10-Door In': 1,
+			'11-Door Out': 1,
 			_base: base
 		};
 	}
@@ -117,78 +117,264 @@ class AssetLoader {
 		return {
 			'Bald Pirate': {
 				base: 'Sprites/2-Enemy-Bald Pirate',
-				'1-Idle': 34,
-				'2-Run': 14,
+				'1-Idle': 1,
+				'2-Run': 4,
 				'3-Jump Anticipation': 1,
-				'4-Jump': 4,
+				'4-Jump': 1,
 				'5-Fall': 2,
 				'6-Ground': 3,
-				'7-Attack': 12,
-				'8-Hit': 8,
-				'9-Dead Hit': 6,
-				'10-Dead Ground': 4
+				'7-Attack': 4,
+				'8-Hit': 2,
+				'9-Dead Hit': 2,
+				'10-Dead Ground': 1
 			},
 			'Cucumber': {
 				base: 'Sprites/3-Enemy-Cucumber',
-				'1-Idle': 36,
-				'2-Run': 12,
+				'1-Idle': 1,
+				'2-Run': 3,
 				'3-Jump Anticipation': 1,
-				'4-Jump': 4,
+				'4-Jump': 2,
 				'5-Fall': 2,
 				'6-Ground': 3,
-				'7-Attack': 11,
-				'8-Blow the wick': 11,
-				'9-Hit': 8,
+				'7-Attack': 3,
+				'8-Blow the wick': 2,
+				'9-Hit': 3,
 				'10-Dead Hit': 6,
-				'11-Dead Ground': 4
-			}
-		};
-	}
+				'11-Dead Ground': 1
 			},
 			'Big Guy': {
 				base: 'Sprites/4-Enemy-Big Guy',
-				'1-Idle': 38,
-				'2-Run': 16,
+				'1-Idle': 1,
+				'2-Run': 1,
 				'3-Jump Anticipation': 1,
-				'4-Jump': 4,
-				'5-Fall': 2,
-				'6-Ground': 3,
-				'7-Attack': 11,
-				'8-Pick (Bomb)': 8,
+				'4-Jump': 1,
+				'5-Fall': 1,
+				'6-Ground': 1,
+				'7-Attack': 1,
+				'8-Pick (Bomb)': 1,
 				'9-Idle (Bomb)': 1,
-				'10-Run (Bomb)': 16,
-				'11-Throw (Bomb)': 11,
-				'12-Hit': 8,
-				'13-Dead Hit': 6,
-				'14-Dead Ground': 4
+				'10-Run (Bomb)': 1,
+				'11-Throw (Bomb)': 1,
+				'12-Hit': 1,
+				'13-Dead Hit': 1,
+				'14-Dead Ground': 1
 			},
 			'Captain': {
 				base: 'Sprites/5-Enemy-Captain',
-				'1-Idle': 32,
-				'2-Run': 14,
+				'1-Idle': 1,
+				'2-Run': 1,
 				'3-Jump Anticipation': 1,
-				'4-Jump': 4,
-				'5-Fall': 2,
-				'6-Ground': 3,
-				'7-Attack': 7,
-				'8-Scare Run': 12,
-				'9-Hit': 8,
-				'10-Dead Hit': 6,
-				'11-Dead Ground': 4
+				'4-Jump': 1,
+				'5-Fall': 1,
+				'6-Ground': 1,
+				'7-Attack': 1,
+				'8-Scare Run': 1,
+				'9-Hit': 1,
+				'10-Dead Hit': 1,
+				'11-Dead Ground': 1
 			},
 			'Whale': {
 				base: 'Sprites/6-Enemy-Whale',
-				'1-Idle': 44,
-				'2-Run': 14,
+				'1-Idle': 1,
+				'2-Run': 1,
 				'3-Jump Anticipation': 1,
-				'4-Jump': 4,
+				'4-Jump': 1,
+				'5-Fall': 1,
+				'6-Ground': 1,
+				'7-Attack': 1,
+				'8-Swalow (Bomb)': 1,
+				'9-Hit': 1,
+				'10-Dead Hit': 1,
+				'11-Dead Ground': 1
+			}
+		};
+	}
+
+	getObjectsManifest() {
+		return {
+			base: 'Sprites/7-Objects',
+			bomb: {
+				'1-Bomb Off': 1,
+				'2-Bomb On': 10,
+				'3-Explotion': 9,
+				base: 'Sprites/7-Objects/1-BOMB'
+			},
+			door: {
+				'1-Closed': 1,
+				'2-Opening': 5,
+				'3-Closing': 5,
+				base: 'Sprites/7-Objects/2-Door'
+			},
+			tiles: {
+				'1': 1,
+				'2': 1,
+				'3': 1,
+				'4': 1,
+				'5': 1,
+				'6': 1,
+				'7': 1,
+				'8': 1,
+				base: 'Sprites/8-Tile-Sets/Variations'
+			}
+		};
+	}
+
+	// ULTRA-FAST LOADING WITH ADVANCED ASSETS LOADER
+	async loadAll(onProgress) {
+		console.log('🚀 Using Advanced Game Assets Loader for ultra-fast loading...');
+		
+		try {
+			// Use the new advanced assets loader
+			const advancedLoader = new GameAssetsLoader();
+			
+			// Load critical assets first (should take < 5 seconds)
+			const assets = await advancedLoader.loadCriticalAssets(onProgress);
+			
+			// Store the loader for future use
+			this.assetsLoader = advancedLoader;
+			
+			// Copy loaded assets to this instance
+			this.assets = assets;
+			
+			console.log('✅ Advanced loading completed - game ready!');
+			console.log('📊 Loader stats:', advancedLoader.getStats());
+			
+			return this.assets;
+		} catch (error) {
+			console.error('❌ Advanced loader failed, using fallbacks:', error);
+			
+			// Create fallback sprites for immediate gameplay
+			this.createFallbackSprites();
+			return this.assets;
+		}
+	}
+}
+	}
+
+
+			// Load all enemy animations
+			const enemiesManifest = this.getEnemiesManifest();
+			this.assets.enemies = {};
+			
+			// Load all enemy types
+			const enemyTypes = ['Bald Pirate', 'Cucumber', 'Big Guy', 'Captain', 'Whale'];
+			for (const enemyName of enemyTypes) {
+				if (enemiesManifest[enemyName]) {
+			this.assets.enemies[enemyName] = {};
+					const essentialEnemyAnims = ['1-Idle', '2-Run', '4-Jump', '5-Fall', '7-Attack', '8-Hit', '9-Hit', '10-Dead Hit', '11-Dead Ground', '12-Hit', '13-Dead Hit', '14-Dead Ground'];
+					for (const anim of essentialEnemyAnims) {
+						if (enemiesManifest[enemyName][anim]) {
+							try {
+								const frames = await Promise.race([
+									this.loadFrames(`${enemiesManifest[enemyName].base}/${anim}`, enemiesManifest[enemyName][anim]),
+									new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+								]);
+				this.assets.enemies[enemyName][anim] = frames;
+								console.log(`Loaded ${enemyName} ${anim}: ${frames.length} frames`);
+							} catch (error) {
+								console.warn(`Failed to load enemy animation ${enemyName} ${anim}:`, error);
+								this.assets.enemies[enemyName][anim] = [];
+							}
+						}
+				addProgress(totalSteps);
+					}
+			}
+</original_code>```
+
+```
+	// Player manifest
+	getPlayerManifest() {
+		const base = 'Sprites/1-Player-Bomb Guy';
+		return {
+			'1-Idle': 2,
+			'2-Run': 6,
+			'3-Jump Anticipation': 1,
+			'4-Jump': 1,
+			'5-Fall': 2,
+			'6-Ground': 1,
+			'7-Hit': 2,
+			'8-Dead Hit': 1,
+			'9-Dead Ground': 1,
+			'10-Door In': 1,
+			'11-Door Out': 1,
+			_base: base
+		};
+	}
+
+	// Enemies manifest (based on scanned counts)
+	getEnemiesManifest() {
+		return {
+			'Bald Pirate': {
+				base: 'Sprites/2-Enemy-Bald Pirate',
+				'1-Idle': 1,
+				'2-Run': 4,
+				'3-Jump Anticipation': 1,
+				'4-Jump': 1,
 				'5-Fall': 2,
 				'6-Ground': 3,
-				'7-Attack': 11,
-				'8-Swalow (Bomb)': 10,
-				'9-Hit': 7,
+				'7-Attack': 4,
+				'8-Hit': 2,
+				'9-Dead Hit': 2,
+				'10-Dead Ground': 1
+			},
+			'Cucumber': {
+				base: 'Sprites/3-Enemy-Cucumber',
+				'1-Idle': 1,
+				'2-Run': 3,
+				'3-Jump Anticipation': 1,
+				'4-Jump': 2,
+				'5-Fall': 2,
+				'6-Ground': 3,
+				'7-Attack': 3,
+				'8-Blow the wick': 2,
+				'9-Hit': 3,
 				'10-Dead Hit': 6,
-				'11-Dead Ground': 4
+				'11-Dead Ground': 1
+			},
+			'Big Guy': {
+				base: 'Sprites/4-Enemy-Big Guy',
+				'1-Idle': 1,
+				'2-Run': 1,
+				'3-Jump Anticipation': 1,
+				'4-Jump': 1,
+				'5-Fall': 1,
+				'6-Ground': 1,
+				'7-Attack': 1,
+				'8-Pick (Bomb)': 1,
+				'9-Idle (Bomb)': 1,
+				'10-Run (Bomb)': 1,
+				'11-Throw (Bomb)': 1,
+				'12-Hit': 1,
+				'13-Dead Hit': 1,
+				'14-Dead Ground': 1
+			},
+			'Captain': {
+				base: 'Sprites/5-Enemy-Captain',
+				'1-Idle': 1,
+				'2-Run': 1,
+				'3-Jump Anticipation': 1,
+				'4-Jump': 1,
+				'5-Fall': 1,
+				'6-Ground': 1,
+				'7-Attack': 1,
+				'8-Scare Run': 1,
+				'9-Hit': 1,
+				'10-Dead Hit': 1,
+				'11-Dead Ground': 1
+			},
+			'Whale': {
+				base: 'Sprites/6-Enemy-Whale',
+				'1-Idle': 1,
+				'2-Run': 1,
+				'3-Jump Anticipation': 1,
+				'4-Jump': 1,
+				'5-Fall': 1,
+				'6-Ground': 1,
+				'7-Attack': 1,
+				'8-Swalow (Bomb)': 1,
+				'9-Hit': 1,
+				'10-Dead Hit': 1,
+				'11-Dead Ground': 1
 			}
 		};
 	}
