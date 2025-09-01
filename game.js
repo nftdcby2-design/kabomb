@@ -6238,6 +6238,29 @@ window.startGame = async function() {
 			const leaderboardInit = await window.leaderboard.initialize();
 			
 			if (leaderboardInit) {
+class PirateBombGame {
+	constructor() {
+		this.init();
+	}
+
+	async init() {
+		try {
+			console.log('Initializing game...');
+			// Initialize the game engine
+			const game = kaboom({
+				width: 1280,
+				height: 720,
+				scale: 1,
+				debug: true,
+				// canvas: document.querySelector("#game"),
+				clearColor: [0, 0, 0, 1],
+			});
+
+			// Initialize leaderboard
+			const leaderboard = new Leaderboard(game);
+			window.leaderboard = leaderboard;
+
+			if (await leaderboard.initLeaderboard()) {
 				console.log('✅ Leaderboard initialized');
 				// Load leaderboard data
 				await window.leaderboard.loadLeaderboard();
@@ -6245,17 +6268,43 @@ window.startGame = async function() {
 			} else {
 				console.warn('⚠️ Leaderboard initialization failed');
 			}
-			
+
+			// Initialize Web3
+			const player = new Player(game);
+			if (await player.initWeb3()) {
+				console.log('✅ Web3 initialized');
+				// Load player data
+				await player.loadPlayerData();
+			} else {
+				console.warn('⚠️ Web3 initialization failed');
+			}
+
+			// Initialize smart contract
+			const smartContract = new SmartContract(game);
+			if (await smartContract.initSmartContract()) {
+				console.log('✅ Smart contract initialized');
+			} else {
+				console.warn('⚠️ Smart contract initialization failed');
+			}
+
+			// Integrate smart contract
+			try {
+				if (await smartContract.integrateSmartContract()) {
+					console.log('✅ Smart contract integration successful');
+				} else {
+					console.warn('⚠️ Smart contract integration failed');
+				}
+			} catch (error) {
+				console.warn('⚠️ Smart contract integration error, but continuing with game:', error);
+			}
 		} catch (error) {
 			console.warn('⚠️ Smart contract integration error, but continuing with game:', error);
 		}
-		}
+	}
 	
 	// Start the game
 	console.log('🎮 Starting Kaboom game...');
 	await game.boot();
-	
-
 	
 	console.log('✅ Game started successfully!');
 	
@@ -6264,4 +6313,9 @@ window.startGame = async function() {
 		console.error('Error details:', error.stack);
 		alert('Error: Game initialization failed. Please refresh the page. Error: ' + error.message);
 	}
+};
+
+// Make the game class globally available
+window.PirateBombGame = PirateBombGame;
+
 };
