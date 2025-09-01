@@ -10,15 +10,17 @@ const securityMiddleware = {
     helmet: helmet({
         contentSecurityPolicy: {
             directives: {
-                defaultSrc: ["'self'"],
+                defaultSrc: ["'self'", "https:", "wss:"],
                 styleSrc: ["'self'", "'unsafe-inline'", "https:"],
-                scriptSrc: ["'self'", "'unsafe-inline'", "https:"],
-                imgSrc: ["'self'", "data:", "https:"],
-                connectSrc: ["'self'", "https:", "wss:"],
-                fontSrc: ["'self'", "https:"],
+                scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "blob:"],
+                scriptSrcAttr: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", "data:", "https:", "blob:"],
+                connectSrc: ["'self'", "https:", "wss:", "*.firebaseio.com", "*.googleapis.com", "*.firebase.com", "firestore.googleapis.com"],
+                fontSrc: ["'self'", "https:", "data:"],
                 objectSrc: ["'none'"],
-                mediaSrc: ["'self'"],
-                frameSrc: ["'none'"],
+                mediaSrc: ["'self'", "https:"],
+                frameSrc: ["https:", "'self'"],
+                workerSrc: ["'self'", "blob:"],
             },
         },
         crossOriginEmbedderPolicy: false,
@@ -301,13 +303,32 @@ const corsOptions = {
             'http://localhost:3000',
             'http://localhost:8000',
             'https://devkaboom.onrender.com',
+            'https://kabomb.onrender.com',
+            'https://firestore.googleapis.com',
+            'https://*.firebaseio.com',
+            'https://*.firebase.com',
+            'https://*.googleapis.com'
             // Add your production domains here
         ];
         
         // Allow requests with no origin (mobile apps, etc.)
         if (!origin) return callback(null, true);
         
-        if (allowedOrigins.indexOf(origin) !== -1) {
+        // Allow all domains in development mode
+        if (process.env.NODE_ENV !== 'production') {
+            return callback(null, true);
+        }
+        
+        // Check if origin matches an allowed pattern
+        const isAllowed = allowedOrigins.some(allowed => {
+            if (allowed.includes('*')) {
+                const pattern = allowed.replace(/\*/g, '.*');
+                return new RegExp(pattern).test(origin);
+            }
+            return allowed === origin;
+        });
+        
+        if (isAllowed) {
             callback(null, true);
         } else {
             logger.security('CORS violation attempt', { 
