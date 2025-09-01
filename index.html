@@ -1749,6 +1749,9 @@
     <!-- <script src="game-optimized.js"></script> -->
     <!-- <script src="game-emergency-fix.js"></script> -->
     
+    <!-- Use simplified game for reliable loading -->
+    <script src="game-simple.js"></script>
+    
     <!-- Preload critical game assets -->
     <script>
         window.addEventListener('DOMContentLoaded', function() {
@@ -2245,6 +2248,28 @@
                             // Development mode - allow playing without wallet
                             if (!window.walletConnection || !window.walletConnection.isConnected) {
                                 console.warn('⚠️ Wallet not connected, starting game in development mode');
+                                // Try simplified game first
+                                if (typeof window.startSimpleGame === 'function') {
+                                    try {
+                                        await window.startSimpleGame();
+                                        clearTimeout(startTimeout); // Clear timeout on success
+                                    } catch (error) {
+                                        console.error('❌ Error calling startSimpleGame:', error);
+                                        clearTimeout(startTimeout); // Clear timeout on error
+                                        // Show loading screen error
+                                        if (loadingText) {
+                                            loadingText.textContent = `Error: ${error.message}`;
+                                        }
+                                        alert('Error: Game failed to start. Error: ' + error.message);
+                                        
+                                        // Show welcome menu again
+                                        if (welcomeMenu) {
+                                            welcomeMenu.style.display = 'block';
+                                        }
+                                    }
+                                    return;
+                                }
+                                // Fallback to original game
                                 if (typeof window.startGame === 'function') {
                                     try {
                                         await window.startGame();
@@ -2292,6 +2317,28 @@
                                 
                                 // Player can play - start the game
                                 console.log('✅ Player can play - starting game');
+                                // Try simplified game first
+                                if (typeof window.startSimpleGame === 'function') {
+                                    try {
+                                        await window.startSimpleGame();
+                                        clearTimeout(startTimeout); // Clear timeout on success
+                                    } catch (error) {
+                                        console.error('❌ Error calling startSimpleGame:', error);
+                                        clearTimeout(startTimeout); // Clear timeout on error
+                                        // Show loading screen error
+                                        if (loadingText) {
+                                            loadingText.textContent = `Error: ${error.message}`;
+                                        }
+                                        alert('Error: Game failed to start. Error: ' + error.message);
+                                        
+                                        // Show welcome menu again
+                                        if (welcomeMenu) {
+                                            welcomeMenu.style.display = 'block';
+                                        }
+                                    }
+                                    return;
+                                }
+                                // Fallback to original game
                                 if (typeof window.startGame === 'function') {
                                     try {
                                         await window.startGame();
@@ -2510,6 +2557,87 @@
                                         loadingScreen.style.display = 'none';
                                     }
                                     
+                                    // Try simplified game first
+                                    if (typeof window.startSimpleGame === 'function') {
+                                        // Show loading screen again
+                                        if (loadingScreen) {
+                                            loadingScreen.style.display = 'flex';
+                                        }
+                                        
+                                        try {
+                                            await window.startSimpleGame();
+                                            clearTimeout(startTimeout); // Clear timeout on success
+                                        } catch (error) {
+                                            console.error('❌ Error calling startSimpleGame:', error);
+                                            clearTimeout(startTimeout); // Clear timeout on error
+                                            // Show loading screen error
+                                            if (loadingText) {
+                                                loadingText.textContent = `Error: ${error.message}`;
+                                            }
+                                            alert('Error: Game failed to start. Error: ' + error.message);
+                                            
+                                            // Show welcome menu again
+                                            if (welcomeMenu) {
+                                                welcomeMenu.style.display = 'block';
+                                            }
+                                        }
+                                        return;
+                                    }
+                                    // Fallback to original game
+                                    // Try simplified game first
+                                    if (typeof window.startSimpleGame === 'function') {
+                                        // Show loading screen again
+                                        if (loadingScreen) {
+                                            loadingScreen.style.display = 'flex';
+                                        }
+                                        
+                                        try {
+                                            await window.startSimpleGame();
+                                            clearTimeout(startTimeout); // Clear timeout on success
+                                        } catch (error) {
+                                            console.error('❌ Error calling startSimpleGame:', error);
+                                            clearTimeout(startTimeout); // Clear timeout on error
+                                            // Show loading screen error
+                                            if (loadingText) {
+                                                loadingText.textContent = `Error: ${error.message}`;
+                                            }
+                                            alert('Error: Game failed to start. Error: ' + error.message);
+                                            
+                                            // Show welcome menu again
+                                            if (welcomeMenu) {
+                                                welcomeMenu.style.display = 'block';
+                                            }
+                                        }
+                                        return;
+                                    }
+                                    // Fallback to original game
+                                    // Try simplified game first
+                                    if (typeof window.startSimpleGame === 'function') {
+                                        // Show loading screen again
+                                        if (loadingScreen) {
+                                            loadingScreen.style.display = 'flex';
+                                        }
+                                        
+                                        try {
+                                            await window.startSimpleGame();
+                                            clearTimeout(startTimeout); // Clear timeout on success
+                                        } catch (error) {
+                                            console.error('❌ Error calling startSimpleGame:', error);
+                                            clearTimeout(startTimeout); // Clear timeout on error
+                                            // Show loading screen error
+                                            if (loadingText) {
+                                                loadingText.textContent = `Error: ${error.message}`;
+                                            }
+                                            alert('Error: Game failed to start. Error: ' + error.message);
+                                            
+                                            // Show welcome menu again
+                                            if (welcomeMenu) {
+                                                welcomeMenu.style.display = 'block';
+                                            }
+                                        }
+                                        return;
+                                    }
+                                    // Fallback to original game
                                     if (typeof window.startGame === 'function') {
                                         // Show loading screen again
                                         if (loadingScreen) {

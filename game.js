@@ -22,9 +22,9 @@ class AssetLoader {
 		this.loadingPromises = new Map();
 		
 		// Preload connection pool for faster loading
-		this.maxConcurrentLoads = 3; // Reduced for better stability
+		this.maxConcurrentLoads = 2; // Further reduced for production stability
 		this.activeLoads = 0;
-		this.timeoutDuration = 5000; // 5 second timeout for each asset
+		this.timeoutDuration = 3000; // 3 second timeout for each asset in production
 	}
 
 	// Enhanced image loader with retry and caching
@@ -99,7 +99,7 @@ class AssetLoader {
 				
 				// Add timeout wrapper
 				const timeoutPromise = new Promise((_, reject) => {
-					setTimeout(() => reject(new Error('Frame loading timeout')), this.timeoutDuration);
+					setTimeout(() => reject(new Error('Frame loading timeout')), this.timeoutDuration * 0.7); // Reduced timeout for production
 				});
 				
 				Promise.race([promise, timeoutPromise])
@@ -128,7 +128,7 @@ class AssetLoader {
 		try {
 			await Promise.race([
 				Promise.all(loadPromises),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall loading timeout')), this.timeoutDuration * frameCount))
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall loading timeout')), this.timeoutDuration * frameCount * 0.7) // Reduced timeout for production)
 			]);
 		} catch (error) {
 			console.warn('Frames loading timeout or error:', error);
@@ -167,7 +167,7 @@ class AssetLoader {
 				const assetPromise = this.loadAsset(assetType, assetName, assetPath);
 				await Promise.race([
 					assetPromise,
-					new Promise((_, reject) => setTimeout(() => reject(new Error(`Asset loading timeout: ${assetPath}`)), this.timeoutDuration * 2))
+					new Promise((_, reject) => setTimeout(() => reject(new Error(`Asset loading timeout: ${assetPath}`)), this.timeoutDuration * 1.5)) // Reduced timeout for production
 				]);
 			} catch (error) {
 				console.warn(`Failed to load asset ${assetPath}:`, error.message);
@@ -179,7 +179,7 @@ class AssetLoader {
 		try {
 			await Promise.race([
 				Promise.all(loadPromises),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall asset loading timeout')), this.timeoutDuration * this.loadingQueue.length))
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall asset loading timeout')), this.timeoutDuration * this.loadingQueue.length * 0.7)) // Reduced timeout for production
 			]);
 		} catch (error) {
 			console.warn('Overall asset loading timeout:', error.message);
@@ -901,9 +901,9 @@ class AssetLoader {
 		this.loadingPromises = new Map();
 		
 		// Preload connection pool for faster loading
-		this.maxConcurrentLoads = 3; // Reduced for better stability
+		this.maxConcurrentLoads = 2; // Further reduced for production stability
 		this.activeLoads = 0;
-		this.timeoutDuration = 5000; // 5 second timeout for each asset
+		this.timeoutDuration = 3000; // 3 second timeout for each asset in production
 	}
 
 	// Enhanced image loader with retry and caching
@@ -978,7 +978,7 @@ class AssetLoader {
 				
 				// Add timeout wrapper
 				const timeoutPromise = new Promise((_, reject) => {
-					setTimeout(() => reject(new Error('Frame loading timeout')), this.timeoutDuration);
+					setTimeout(() => reject(new Error('Frame loading timeout')), this.timeoutDuration * 0.7); // Reduced timeout for production
 				});
 				
 				Promise.race([promise, timeoutPromise])
@@ -1007,7 +1007,7 @@ class AssetLoader {
 		try {
 			await Promise.race([
 				Promise.all(loadPromises),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall loading timeout')), this.timeoutDuration * frameCount))
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall loading timeout')), this.timeoutDuration * frameCount * 0.7) // Reduced timeout for production)
 			]);
 		} catch (error) {
 			console.warn('Frames loading timeout or error:', error);
@@ -1046,7 +1046,7 @@ class AssetLoader {
 				const assetPromise = this.loadAsset(assetType, assetName, assetPath);
 				await Promise.race([
 					assetPromise,
-					new Promise((_, reject) => setTimeout(() => reject(new Error(`Asset loading timeout: ${assetPath}`)), this.timeoutDuration * 2))
+					new Promise((_, reject) => setTimeout(() => reject(new Error(`Asset loading timeout: ${assetPath}`)), this.timeoutDuration * 1.5)) // Reduced timeout for production
 				]);
 			} catch (error) {
 				console.warn(`Failed to load asset ${assetPath}:`, error.message);
@@ -1058,7 +1058,7 @@ class AssetLoader {
 		try {
 			await Promise.race([
 				Promise.all(loadPromises),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall asset loading timeout')), this.timeoutDuration * this.loadingQueue.length))
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall asset loading timeout')), this.timeoutDuration * this.loadingQueue.length * 0.7)) // Reduced timeout for production
 			]);
 		} catch (error) {
 			console.warn('Overall asset loading timeout:', error.message);
@@ -1786,9 +1786,15 @@ class PirateBombGame {
 			
 			// Add timeout protection for the entire boot process
 			const bootTimeout = setTimeout(() => {
-				console.error('❌ Game boot timeout - took longer than 30 seconds');
-				throw new Error('Game boot timeout - took longer than 30 seconds');
-			}, 30000); // 30 second timeout
+				console.error('❌ Game boot timeout - took longer than 20 seconds');
+				// Show error to user
+				const loadingText = document.getElementById('loadingText');
+				if (loadingText) {
+					loadingText.textContent = 'Error: Game loading timeout. Showing fallback game...';
+				}
+				// Try to show fallback game
+				this.showFallbackGame();
+			}, 20000); // 20 second timeout for production
 			
 			// Step 1: Load assets using default asset loader with timeout protection
 			console.log('Step 1: Loading game assets...');
@@ -1802,11 +1808,15 @@ class PirateBombGame {
 				this.safeCall('setupGame');
 			}).catch((error) => {
 				console.error('Failed to load assets:', error);
+				// Try to show fallback game on asset loading error
+				this.showFallbackGame();
 			}).finally(() => {
 				clearTimeout(bootTimeout);
 			});
 		} catch (error) {
 			console.error('Unexpected error during game boot:', error);
+			// Try to show fallback game on unexpected error
+			this.showFallbackGame();
 		}
 	}
 
@@ -1880,6 +1890,42 @@ class PirateBombGame {
 		
 		// Start the game loop
 		this.gameLoop();
+	}
+
+	showFallbackGame() {
+		console.log('Showing fallback game...');
+		// Hide loading screen
+		const loadingScreen = document.getElementById('loadingScreen');
+		if (loadingScreen) {
+			loadingScreen.style.display = 'none';
+		}
+		
+		// Show error message on canvas
+		if (this.ctx && this.canvas) {
+			this.ctx.fillStyle = '#1a1a2e';
+			this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+			
+			this.ctx.textAlign = 'center';
+			this.ctx.fillStyle = '#ff6b6b';
+			this.ctx.font = 'bold 24px Arial';
+			this.ctx.fillText('Game Loading Error', this.canvas.width / 2, this.canvas.height / 2 - 40);
+			
+			this.ctx.fillStyle = '#ffffff';
+			this.ctx.font = '16px Arial';
+			this.ctx.fillText('The game is taking too long to load.', this.canvas.width / 2, this.canvas.height / 2);
+			this.ctx.fillText('Showing simplified version...', this.canvas.width / 2, this.canvas.height / 2 + 30);
+			
+			this.ctx.fillStyle = '#4fc3f7';
+			this.ctx.font = '14px Arial';
+			this.ctx.fillText('Please refresh the page (F5)', this.canvas.width / 2, this.canvas.height / 2 + 70);
+		}
+		
+		// Try to start simplified game after a delay
+		setTimeout(() => {
+			if (typeof window.startSimpleGame === 'function') {
+				window.startSimpleGame();
+			}
+		}, 2000);
 	}
 
 	gameLoop() {
@@ -7491,11 +7537,15 @@ window.startGame = async function() {
 	
 	// Add a timeout to prevent indefinite hanging
 	const startGameTimeout = setTimeout(() => {
-		console.error('❌ startGame() timeout - took longer than 30 seconds');
+		console.error('❌ startGame() timeout - took longer than 20 seconds');
 		if (typeof game !== 'undefined' && game) {
 			console.log('🎮 Forcing game start with emergency mode');
 			try {
-				game.createEmergencyGame();
+				if (typeof game.showFallbackGame === 'function') {
+					game.showFallbackGame();
+				} else {
+					game.createEmergencyGame();
+				}
 			} catch (error) {
 				console.error('❌ Emergency game creation failed:', error);
 				// Show error on loading screen
@@ -7514,7 +7564,11 @@ window.startGame = async function() {
 			try {
 				console.log('🎮 Creating new game instance in emergency mode');
 				game = new PirateBombGame();
-				game.createEmergencyGame();
+				if (typeof game.showFallbackGame === 'function') {
+					game.showFallbackGame();
+				} else {
+					game.createEmergencyGame();
+				}
 			} catch (error) {
 				console.error('❌ Emergency game creation failed:', error);
 				// Show error on loading screen
@@ -7529,7 +7583,7 @@ window.startGame = async function() {
 				alert('Game failed to start. Please refresh the page.');
 			}
 		}
-	}, 30000); // 30 second timeout
+	}, 20000); // 20 second timeout for production
 	
 	// Clear timeout when function completes
 	const clearStartTimeout = () => {

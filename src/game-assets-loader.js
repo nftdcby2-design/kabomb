@@ -16,10 +16,10 @@ class GameAssetsLoader {
         this.isLoading = false;
         
         // Performance settings
-        this.maxConcurrentLoads = 3; // Reduced for better stability
+        this.maxConcurrentLoads = 2; // Further reduced for production stability
         this.activeLoads = 0;
-        this.retryAttempts = 2;
-        this.timeoutDuration = 5000; // 5 second timeout
+        this.retryAttempts = 1; // Reduced for production
+        this.timeoutDuration = 3000; // 3 second timeout for production
         
         // Asset priorities
         this.PRIORITY = {
@@ -109,7 +109,7 @@ class GameAssetsLoader {
                     setTimeout(() => {
                         console.error('❌ Overall critical assets loading timeout');
                         reject(new Error('Overall critical assets loading timeout'));
-                    }, this.timeoutDuration * 2);
+                    }, this.timeoutDuration * 1.5); // Reduced timeout for production
                 })
             ]);
         } catch (error) {
@@ -190,10 +190,25 @@ class GameAssetsLoader {
                 }
             };
             
-            img.onerror = () => {
+            img.onerror = (error) => {
                 clearTimeout(timeout);
-                console.warn(`❌ Failed to load image: ${encodedSrc}`);
-                reject(new Error(`Failed to load image: ${encodedSrc}`));
+                console.warn(`❌ Failed to load image: ${encodedSrc}`, error);
+                // Try to load a fallback image
+                if (src.includes('Sprites/')) {
+                    // This is a game sprite, try to create a fallback
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 64;
+                    canvas.height = 64;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#CCCCCC';
+                    ctx.fillRect(0, 0, 64, 64);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(0, 0, 64, 64);
+                    resolve(canvas);
+                } else {
+                    reject(new Error(`Failed to load image: ${encodedSrc}`));
+                }
             };
             
             // Set src after setting up handlers
