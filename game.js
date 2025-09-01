@@ -1,13 +1,12 @@
 /*
-Kaboom - Web Version (Sprite-based) - OPTIMIZED LOADING
-- Implements progressive loading with critical assets first
-- Uses parallel loading and connection pooling
-- Lazy loads non-essential animations
-- Includes fallback sprites for instant playability
+Kaboom - Web Version (Sprite-based)
+- Loads frames directly from `Sprites/`
+- Animates Player, Enemies (5 types), and Bombs
+- Keeps original game logic states
 */
 
 // ---------------------------
-// Performance Optimized Asset Loader
+// Asset Loader
 // ---------------------------
 class AssetLoader {
 	constructor() {
@@ -16,71 +15,26 @@ class AssetLoader {
 			enemies: {},
 			objects: {}
 		};
-		this.loadingQueue = [];
-		this.loadedAssets = new Set();
-		this.loadingPromises = new Map();
-		
-		// Preload connection pool for faster loading
-		this.maxConcurrentLoads = 6; // Browser limit
-		this.activeLoads = 0;
 	}
 
-	// Enhanced image loader with retry and caching
-	loadImage(src) {
-		if (this.loadingPromises.has(src)) {
-			return this.loadingPromises.get(src);
-		}
-		
-		const promise = new Promise((resolve, reject) => {
-			const img = new Image();
-			img.crossOrigin = 'anonymous'; // Enable cross-origin
-			img.onload = () => {
-				this.loadedAssets.add(src);
-				resolve(img);
-			};
-			img.onerror = () => {
-				console.warn(`Failed to load: ${src}`);
-				reject(new Error(`Failed to load image: ${src}`));
-			};
-			img.src = src;
-		});
-		
-		this.loadingPromises.set(src, promise);
-		return promise;
-	}
-
-	// Load consecutive frames with parallel loading
-	async loadFrames(folderPath, frameCount, priority = 'normal') {
+	// Load consecutive frames 1.png..N.png from a folder
+	async loadFrames(folderPath, frameCount) {
 		const frames = [];
-		const loadPromises = [];
-		
-		// Create all load promises first
 		for (let i = 1; i <= frameCount; i += 1) {
 			const src = encodeURI(`${folderPath}/${i}.png`);
-			loadPromises.push(this.loadImage(src));
+			const img = await this.loadImage(src);
+			frames.push(img);
 		}
-		
-		// Load in batches based on priority
-		const batchSize = priority === 'critical' ? this.maxConcurrentLoads : 3;
-		for (let i = 0; i < loadPromises.length; i += batchSize) {
-			const batch = loadPromises.slice(i, i + batchSize);
-			try {
-				const batchResults = await Promise.allSettled(batch);
-				batchResults.forEach((result, idx) => {
-					if (result.status === 'fulfilled') {
-						frames[i + idx] = result.value;
-					} else {
-						console.warn(`Frame ${i + idx + 1} failed:`, result.reason);
-						frames[i + idx] = null; // Placeholder
-					}
-				});
-			} catch (error) {
-				console.warn(`Batch loading error:`, error);
-			}
-		}
-		
-		// Filter out null frames and return valid ones
-		return frames.filter(frame => frame !== null);
+		return frames;
+	}
+
+	loadImage(src) {
+		return new Promise((resolve, reject) => {
+			const img = new Image();
+			img.onload = () => resolve(img);
+			img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+			img.src = src;
+		});
 	}
 
 	// Player manifest
@@ -209,38 +163,42 @@ class AssetLoader {
 		};
 	}
 
-	// ULTRA-FAST LOADING WITH ADVANCED ASSETS LOADER
 	async loadAll(onProgress) {
-		console.log('🚀 Using Advanced Game Assets Loader for ultra-fast loading...');
+		let loaded = 0;
+		const addProgress = (total) => {
+			loaded += 1;
+			if (onProgress) onProgress(loaded, total);
+		};
+
+		// Enhanced loading - load all assets with timeout
+		const totalSteps = 50; // Increased count for more sprites
 		
 		try {
-			// Use the new advanced assets loader
-			const advancedLoader = new GameAssetsLoader();
+			// Load only essential player animations with timeout
+		const playerManifest = this.getPlayerManifest();
+			this.assets.player = {};
 			
-			// Load critical assets first (should take < 5 seconds)
-			const assets = await advancedLoader.loadCriticalAssets(onProgress);
-			
-			// Store the loader for future use
-			this.assetsLoader = advancedLoader;
-			
-			// Copy loaded assets to this instance
-			this.assets = assets;
-			
-			console.log('✅ Advanced loading completed - game ready!');
-			console.log('📊 Loader stats:', advancedLoader.getStats());
-			
-			return this.assets;
-		} catch (error) {
-			console.error('❌ Advanced loader failed, using fallbacks:', error);
-			
-			// Create fallback sprites for immediate gameplay
-			this.createFallbackSprites();
-			return this.assets;
-		}
-	}
-}
-	}
-
+			// Load only the most important player animations
+			const essentialPlayerAnims = ['1-Idle', '2-Run', '4-Jump', '5-Fall', '7-Hit', '8-Dead Hit', '9-Dead Ground'];
+			for (const anim of essentialPlayerAnims) {
+				if (playerManifest[anim]) {
+					try {
+						console.log(`Loading player animation: ${anim} with ${playerManifest[anim]} frames from ${playerManifest._base}/${anim}`);
+						const frames = await Promise.race([
+							this.loadFrames(`${playerManifest._base}/${anim}`, playerManifest[anim]),
+							new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+						]);
+						console.log(`Successfully loaded ${anim}: ${frames.length} frames`);
+						this.assets.player[anim] = frames;
+					} catch (error) {
+						console.warn(`Failed to load player animation ${anim}:`, error);
+						this.assets.player[anim] = [];
+					}
+				} else {
+					console.warn(`Player animation ${anim} not found in manifest`);
+				}
+				addProgress(totalSteps);
+			}
 
 			// Load all enemy animations
 			const enemiesManifest = this.getEnemiesManifest();
@@ -605,378 +563,159 @@ class PirateBombGame {
 
 	async boot() {
 		try {
-			console.log('🚀 Starting robust game boot with enhanced error handling...');
-			
-			// Step 1: Load assets with new advanced loader
-			console.log('Step 1: Loading game assets...');
+			console.log('Starting game boot...');
 			const loader = new AssetLoader();
 			this.assets = await loader.loadAll((loaded, total) => {
 				const progress = (loaded / total) * 100;
-				try {
-					const loadingFill = document.getElementById('loadingFill');
-					const loadingText = document.getElementById('loadingText');
-					if (loadingFill) loadingFill.style.width = progress + '%';
-					if (loadingText) loadingText.textContent = `⚡ Loading... ${Math.round(progress)}%`;
-				} catch (uiError) {
-					console.warn('⚠️ Loading UI update failed:', uiError);
-				}
+				document.getElementById('loadingFill').style.width = progress + '%';
+				document.getElementById('loadingText').textContent = `Loading sprites... ${Math.round(progress)}%`;
 			});
-			
-			if (!this.assets) {
-				throw new Error('Assets failed to load completely');
-			}
-			console.log('✅ Assets loaded successfully');
 
-			// Step 2: Validate and create fallback sprites if needed
-			console.log('Step 2: Validating player assets...');
-			const hasValidPlayerAssets = this.validatePlayerAssets();
-			if (!hasValidPlayerAssets) {
-				console.warn('⚠️ Creating fallback sprites...');
+			console.log('Assets loaded, creating player...');
+			console.log('Player assets before creating player:', this.assets.player);
+			
+			// Check if we have real sprites before creating player
+			const hasRealSprites = this.assets.player && 
+				Object.keys(this.assets.player).length > 0 && 
+				this.assets.player['4-Jump'] && 
+				this.assets.player['4-Jump'].length > 0;
+			
+			if (!hasRealSprites) {
+				console.warn('No real sprites found, creating fallbacks');
 				this.createFallbackSprites();
+			} else {
+				console.log('Real sprites found, using them');
 			}
-
-			// Step 3: Initialize game world safely
-			console.log('Step 3: Initializing game world...');
-			this.initializeGameWorld();
-
-			// Step 4: Create player with error handling
-			console.log('Step 4: Creating player...');
-			this.createPlayerSafely();
-
-			// Step 5: Initialize game entities
-			console.log('Step 5: Spawning game entities...');
-			this.initializeGameEntities();
-
-			// Step 6: Start game systems
-			console.log('Step 6: Starting game systems...');
-			this.startGameSystems();
-
-			// Step 7: Initialize Web3 safely (non-blocking)
-			console.log('Step 7: Initializing Web3 systems...');
-			this.initializeWeb3Safely();
-
-			console.log('✅ Game boot completed successfully!');
-
-		} catch (error) {
-			console.error('❌ Critical error during game boot:', error);
-			this.handleBootFailure(error);
-		}
-	}
-
-	// Helper method: Validate that player assets are properly loaded
-	validatePlayerAssets() {
-		try {
-			if (!this.assets || !this.assets.player) {
-				console.warn('⚠️ No player assets found');
-				return false;
-			}
-
-			const essentialAnims = ['1-Idle', '2-Run', '4-Jump', '5-Fall'];
-			let validAnimCount = 0;
-
-			for (const anim of essentialAnims) {
-				if (this.assets.player[anim] && this.assets.player[anim].length > 0) {
-					validAnimCount++;
-					console.log(`✅ Player ${anim}: ${this.assets.player[anim].length} frames`);
-				} else {
-					console.warn(`⚠️ Missing player animation: ${anim}`);
-				}
-			}
-
-			const isValid = validAnimCount >= 2; // At least 2 essential animations
-			console.log(`Player assets validation: ${validAnimCount}/${essentialAnims.length} essential animations loaded`);
-			return isValid;
-		} catch (error) {
-			console.error('❌ Error validating player assets:', error);
-			return false;
-		}
-	}
-
-	// Helper method: Initialize game world with error handling
-	initializeGameWorld() {
-		try {
-			console.log('🌍 Setting up game world...');
 			
-			// Generate level layout
+			this.player = new Player(100, 500, this.assets.player);
+			
+			console.log('Generating level...');
 			this.generateLevel();
 			this.computeWorldBounds();
 			
-			// Reset game state safely
-			this.gameState.gameOver = false;
-			this.gameState.paused = false;
+			// Spawn player from top of screen (classic platformer style)
+			this.player.x = 100;
+			this.player.y = 100; // Start in visible area for debugging
+			this.player.velY = 0; // No initial velocity
+			this.player.onGround = false; // Start in air
+			this.player.setAnim('1-Idle'); // Idle animation for debugging
+			// Spawn invulnerability to avoid instant damage
+			this.player.invulnerable = true;
+			this.player.invulTimer = 2000;
+		console.log('🔍 PLAYER SPAWNED at:', this.player.x, this.player.y);
 			
-			// Clear existing entities
-			this.enemies = [];
-			this.bombs = [];
-			this.potions = [];
-			this.thrownBombs = [];
+			console.log('Spawning enemies...');
+			this.spawnEnemies();
 			
-			console.log('✅ Game world initialized');
-		} catch (error) {
-			console.error('❌ Error initializing game world:', error);
-			throw new Error(`Game world initialization failed: ${error.message}`);
-		}
-	}
-
-	// Helper method: Create player with comprehensive error handling
-	createPlayerSafely() {
-		try {
-			console.log('👤 Creating player character...');
+			console.log('Spawning potions...');
+			this.spawnPotions();
 			
-			// Ensure we have player sprites
-			if (!this.assets.player || Object.keys(this.assets.player).length === 0) {
-				console.warn('⚠️ No player sprites available, creating emergency fallbacks');
-				this.createFallbackSprites();
-			}
-			
-			// Create player instance
-			const playerX = 100;
-			const playerY = this.height - 200;
-			
-			this.player = new Player(playerX, playerY, this.assets.player);
-			
-			if (!this.player) {
-				throw new Error('Player creation returned null');
-			}
-			
-			// Validate player was created properly
-			if (typeof this.player.update !== 'function' || typeof this.player.render !== 'function') {
-				throw new Error('Player object missing essential methods');
-			}
-			
-			// Initialize player state
-			this.player.worldWidth = this.worldWidth;
-			this.player.lives = this.gameState.lives;
-			this.player.health = this.player.maxHealth;
-			this.player.isDead = false;
-			this.player.bombsAvailable = this.player.maxBombs;
-			
-			console.log(`✅ Player created at (${playerX}, ${playerY}) with ${this.player.lives} lives`);
-		} catch (error) {
-			console.error('❌ Error creating player:', error);
-			throw new Error(`Player creation failed: ${error.message}`);
-		}
-	}
-
-	// Helper method: Initialize game entities (enemies, potions, etc.)
-	initializeGameEntities() {
-		try {
-			console.log('👹 Spawning game entities...');
-			
-			// Spawn enemies with error handling
-			try {
-				this.spawnEnemies();
-				console.log(`✅ Spawned ${this.enemies.length} enemies`);
-			} catch (error) {
-				console.warn('⚠️ Enemy spawning failed, continuing without enemies:', error);
-				this.enemies = [];
-			}
-			
-			// Spawn potions with error handling
-			try {
-				this.spawnPotions();
-				console.log(`✅ Spawned ${this.potions.length} potions`);
-			} catch (error) {
-				console.warn('⚠️ Potion spawning failed, continuing without potions:', error);
-				this.potions = [];
-			}
-			
-			console.log('✅ Game entities initialized');
-		} catch (error) {
-			console.error('❌ Error initializing game entities:', error);
-			// Don't throw here - game can continue without some entities
-			console.warn('⚠️ Continuing with minimal entities');
-		}
-	}
-
-	// Helper method: Start essential game systems
-	startGameSystems() {
-		try {
-			console.log('⚙️ Starting game systems...');
-			
+			console.log('Hiding loading screen...');
 			// Hide loading screen
-			try {
-				const loading = document.getElementById('loading');
-				if (loading) {
-					loading.style.display = 'none';
-					console.log('✅ Loading screen hidden');
-				}
-			} catch (error) {
-				console.warn('⚠️ Could not hide loading screen:', error);
-			}
+			document.getElementById('loadingScreen').style.display = 'none';
 			
-			// Start game loop
-			try {
-				this.gameLoop();
-				console.log('✅ Game loop started');
-			} catch (error) {
-				console.error('❌ Failed to start game loop:', error);
-				throw new Error(`Game loop failed to start: ${error.message}`);
-			}
-			
-			// Initialize UI
-			try {
-				this.updateUI();
-				console.log('✅ UI initialized');
-			} catch (error) {
-				console.warn('⚠️ UI initialization failed:', error);
-			}
-			
-			console.log('✅ Game systems started');
-		} catch (error) {
-			console.error('❌ Error starting game systems:', error);
-			throw new Error(`Game systems failed to start: ${error.message}`);
-		}
-	}
-
-	// Helper method: Initialize Web3 systems safely (non-blocking)
-	initializeWeb3Safely() {
-		// Run Web3 initialization in background without blocking game startup
-		setTimeout(async () => {
-			try {
-				console.log('🔗 Initializing Web3 systems...');
-				
-				// Initialize wallet connection if available
-				if (window.walletConnection && typeof window.walletConnection.initialize === 'function') {
-					await window.walletConnection.initialize();
-					console.log('✅ Wallet connection initialized');
-				}
-				
-				// Initialize player registry if available
-				if (window.playerRegistry && typeof window.playerRegistry.initialize === 'function') {
-					await window.playerRegistry.initialize();
-					console.log('✅ Player registry initialized');
-				}
-				
-				// Initialize recharge system if available
-				if (window.rechargeManager && typeof window.rechargeManager.initialize === 'function') {
-					await window.rechargeManager.initialize();
-					console.log('✅ Recharge system initialized');
-				}
-				
-				console.log('✅ Web3 systems initialized successfully');
-			} catch (error) {
-				console.warn('⚠️ Web3 initialization failed (game continues normally):', error);
-				// Don't throw - game should work without Web3
-			}
-		}, 100); // Small delay to ensure game starts first
-	}
-
-	// Handle boot failure with user-friendly error display
-	handleBootFailure(error) {
-		console.error('💥 CRITICAL BOOT FAILURE:', error);
-		
-		try {
-			// Hide loading screen
-			const loading = document.getElementById('loading');
-			if (loading) {
-				loading.style.display = 'none';
-			}
-			
-			// Show error message on screen instead of alert
-			this.displayBootError(error);
-			
-			// Try to create emergency fallback game
-			this.createEmergencyGame();
-			
-		} catch (secondaryError) {
-			console.error('💥 SECONDARY FAILURE in error handling:', secondaryError);
-			
-			// Last resort: show basic error message
-			document.body.innerHTML = `
-				<div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background: #1a1a2e; color: #fff; font-family: Arial, sans-serif;">
-					<h1 style="color: #ff6b6b; margin-bottom: 20px;">🚨 Game Initialization Failed</h1>
-					<p style="max-width: 600px; text-align: center; margin-bottom: 20px;">We encountered a critical error while starting the game:</p>
-					<pre style="background: #16213e; padding: 20px; border-radius: 8px; max-width: 80%; overflow: auto;">${error.message}</pre>
-					<button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #4ecdc4; border: none; border-radius: 4px; color: white; cursor: pointer;">🔄 Reload Game</button>
-				</div>
-			`;
-		}
-	}
-
-	// Display boot error with styling
-	displayBootError(error) {
-		const errorContainer = document.createElement('div');
-		errorContainer.id = 'bootError';
-		errorContainer.style.cssText = `
-			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
-			background: rgba(26, 26, 46, 0.95);
-			display: flex;
-			flex-direction: column;
-			justify-content: center;
-			align-items: center;
-			z-index: 10000;
-			color: white;
-			font-family: Arial, sans-serif;
-			text-align: center;
-		`;
-		
-		errorContainer.innerHTML = `
-			<div style="max-width: 600px; padding: 40px; background: #16213e; border-radius: 12px; border: 2px solid #ff6b6b;">
-				<h1 style="color: #ff6b6b; margin-bottom: 20px; font-size: 28px;">🚨 Game Initialization Failed</h1>
-				<p style="margin-bottom: 20px; font-size: 16px; line-height: 1.6;">The game encountered an error during startup. This could be due to:</p>
-				<ul style="text-align: left; margin-bottom: 20px; line-height: 1.8;">
-					<li>Network connectivity issues</li>
-					<li>Browser compatibility problems</li>
-					<li>Missing game assets</li>
-					<li>Web3 connection problems</li>
-				</ul>
-				<div style="background: #0f1419; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-family: monospace; font-size: 14px; text-align: left; overflow: auto; max-height: 200px;">
-					<strong>Error Details:</strong><br>
-					${error.message}
-				</div>
-				<div style="display: flex; gap: 15px; justify-content: center;">
-					<button onclick="this.parentElement.parentElement.parentElement.remove(); game.createEmergencyGame();" 
-							style="padding: 12px 24px; background: #4ecdc4; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 16px;">🎮 Try Emergency Mode</button>
-					<button onclick="location.reload()" 
-							style="padding: 12px 24px; background: #ff6b6b; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 16px;">🔄 Reload Game</button>
-				</div>
-			</div>
-		`;
-		
-		document.body.appendChild(errorContainer);
-	}
-
-	// Create minimal emergency game for basic functionality
-	createEmergencyGame() {
-		try {
-			console.log('🚨 Creating emergency fallback game...');
-			
-			// Create minimal assets if none exist
-			if (!this.assets) {
-				this.assets = { player: {}, enemies: {}, objects: {} };
-			}
-			
-			// Create absolute minimum fallback sprites
-			this.createFallbackSprites();
-			
-			// Create minimal level
-			this.platforms = [
-				{ x: 0, y: this.height - 64, width: this.width, height: 64, type: 'ground' }
-			];
-			
-			// Create basic player
-			if (!this.player) {
-				this.player = new Player(100, this.height - 200, this.assets.player);
-				this.player.worldWidth = this.width;
-			}
-			
-			// Reset game state
-			this.gameState.gameOver = false;
-			this.gameState.paused = false;
-			this.gameState.level = 1;
-			
-			// Start minimal game loop
+			console.log('Starting game loop...');
 			this.gameLoop();
 			
-			console.log('✅ Emergency game created successfully');
+			// Load saved progress after game is initialized
+			if (window.walletConnection && window.walletConnection.loadPlayerProgress) {
+				await window.walletConnection.loadPlayerProgress();
+				console.log('🎮 Game state after loading progress:', {
+					level: this.gameState.level,
+					totalScore: this.gameState.totalScore,
+					currentScore: this.gameState.currentScore,
+					lives: this.gameState.lives
+				});
+				
+				// Sync game state with recharge system
+				if (window.rechargeManager) {
+					const rechargeLives = window.rechargeManager.getLivesRemaining();
+					this.gameState.lives = rechargeLives;
+					console.log(`🔋 Synced game lives with recharge system: ${rechargeLives}`);
+				}
+				
+				// Save initial state to database
+				if (window.playerDataManager) {
+					const walletAddress = this.getPlayerWalletAddress();
+					if (walletAddress) {
+						const playerProfile = {
+							walletAddress: walletAddress,
+							username: `Kaboom_${walletAddress.slice(0, 6)}`,
+							level: this.gameState.level,
+							totalScore: this.gameState.totalScore,
+							boomTokens: Math.floor(this.gameState.totalScore * 0.10),
+							lives: this.gameState.lives,
+							currentScore: this.gameState.currentScore
+						};
+						
+						window.playerDataManager.savePlayerProfile(playerProfile).then(result => {
+							if (result.success) {
+								console.log('✅ Initial player data saved to database');
+							} else {
+								console.warn('⚠️ Failed to save initial data to database:', result.error);
+							}
+						});
+					} else {
+						console.log('⏳ Wallet not connected yet, will save initial data when connected');
+					}
+				}
+				
+						// Update token display immediately after loading progress
+		const playerTokenBalance = document.getElementById('playerTokenBalance');
+		if (playerTokenBalance) {
+			const currentTokens = Math.floor(this.gameState.totalScore * 0.10);
+			playerTokenBalance.textContent = currentTokens;
+			console.log(`💰 Progress loaded - Token display updated: ${currentTokens} (from score: ${this.gameState.totalScore})`);
+		}
+		
+		// Sync current game state to database when wallet connects
+		if (window.playerRegistry && window.playerRegistry.syncGameStateToDatabase) {
+			window.playerRegistry.syncGameStateToDatabase();
+		}
+				
+				// Save current state to database after loading progress
+				if (window.playerDataManager) {
+					const walletAddress = this.getPlayerWalletAddress();
+					if (walletAddress) {
+						const playerProfile = {
+							walletAddress: walletAddress,
+							username: window.playerProfile?.username || `Kaboom_${walletAddress.slice(0, 6)}`,
+							level: this.gameState.level,
+							totalScore: this.gameState.totalScore,
+							boomTokens: Math.floor(this.gameState.totalScore * 0.10),
+							lives: this.player.lives,
+							currentScore: this.gameState.currentScore
+						};
+						
+						window.playerDataManager.savePlayerProfile(playerProfile).then(result => {
+							if (result.success) {
+								console.log('✅ Player data synced to database after loading progress');
+							} else {
+								console.warn('⚠️ Failed to sync to database:', result.error);
+							}
+						});
+					} else {
+						console.log('⏳ Wallet not connected yet, will sync when connected');
+					}
+				}
+			}
 			
+			// Start background music after user interaction (game start)
+			if (this.soundManager && this.soundManager.startBackgroundMusic) {
+				console.log('Starting background music from game boot...');
+				// Start music immediately since user clicked start button
+				this.soundManager.startBackgroundMusic();
+			}
+			
+			// Also try global music start function
+			if (window.startMusic) {
+				console.log('Calling global startMusic function...');
+				window.startMusic();
+			}
 		} catch (error) {
-			console.error('💥 Emergency game creation failed:', error);
+			console.error('Error during game boot:', error);
+			// Show error on loading screen
+			document.getElementById('loadingText').textContent = `Error: ${error.message}`;
 		}
 	}
 
