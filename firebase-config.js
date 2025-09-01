@@ -10,10 +10,41 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+let app, db;
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+try {
+  // Dynamic imports with error handling
+  const firebaseModules = async () => {
+    try {
+      const firebaseApp = await import('https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js');
+      const firestore = await import('https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js');
+      
+      return { 
+        initializeApp: firebaseApp.initializeApp,
+        getFirestore: firestore.getFirestore 
+      };
+    } catch (error) {
+      console.error('Error loading Firebase modules:', error);
+      throw error;
+    }
+  };
 
+  // Initialize Firebase app and services
+  (async () => {
+    try {
+      const { initializeApp, getFirestore } = await firebaseModules();
+      app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      console.log('✅ Firebase initialized successfully');
+    } catch (error) {
+      console.error('❌ Firebase initialization failed:', error);
+      // Will use fallback in game.js
+    }
+  })();
+} catch (error) {
+  console.error('❌ Firebase setup error:', error);
+  // Will use fallback in game.js
+}
+
+// Export the db object (may be undefined if initialization fails)
 export { db };

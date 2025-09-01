@@ -613,10 +613,23 @@ class PirateBombGame {
 			// Try to import Firebase asset loader
 			let firebaseAssetLoader;
 			try {
-				firebaseAssetLoader = await import('./firebase-asset-loader.js');
-				firebaseAssetLoader = firebaseAssetLoader.default;
+				console.log('🔄 Attempting to load Firebase asset loader...');
+				
+				// Add timeout protection for Firebase import
+				const importPromise = import('./firebase-asset-loader.js');
+				
+				// Create a timeout promise
+				const timeoutPromise = new Promise((_, reject) => {
+					setTimeout(() => reject(new Error('Firebase import timed out after 5 seconds')), 5000);
+				});
+				
+				// Race between import and timeout
+				const importResult = await Promise.race([importPromise, timeoutPromise]);
+				firebaseAssetLoader = importResult.default;
+				console.log('✅ Firebase asset loader imported successfully');
 			} catch (importError) {
-				console.warn('⚠️ Firebase asset loader not available, using default asset loader');
+				console.warn('⚠️ Firebase asset loader not available:', importError.message);
+				console.log('⚙️ Using default asset loader instead');
 				const loader = new AssetLoader();
 				this.assets = await loader.loadAll((loaded, total) => {
 					const progress = (loaded / total) * 100;

@@ -1,6 +1,24 @@
 // Firebase Asset Loader
-import { db } from './firebase-config.js';
-import { doc, getDoc } from 'firebase/firestore';
+// Dynamically import Firebase modules
+let db;
+
+async function initializeFirebase() {
+  try {
+    // Try to import from the regular path first
+    const { db: firebaseDb } = await import('./firebase-config.js');
+    if (firebaseDb) {
+      console.log('✅ Firebase DB imported successfully');
+      db = firebaseDb;
+      return true;
+    } else {
+      console.warn('⚠️ Firebase DB was imported but is undefined');
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Error importing Firebase DB:', error);
+    return false;
+  }
+}
 
 class FirebaseAssetLoader {
   constructor() {
@@ -16,18 +34,42 @@ class FirebaseAssetLoader {
   // Fetch asset list from Firebase Firestore
   async fetchAssetList() {
     try {
-      const docRef = doc(db, "gameAssets", "assetList");
-      const docSnap = await getDoc(docRef);
+      // Make sure Firebase is initialized
+      const isInitialized = await initializeFirebase();
+      if (!isInitialized) {
+        console.warn('⚠️ Firebase not initialized, using default assets');
+        return this.getDefaultAssetList();
+      }
       
-      if (docSnap.exists()) {
-        console.log("✅ Firebase asset list loaded successfully");
-        return docSnap.data();
-      } else {
-        console.warn("⚠️ No asset list found in Firebase, using default assets");
+      // Try to import Firestore functions
+      let doc, getDoc;
+      try {
+        const firestoreModule = await import('firebase/firestore');
+        doc = firestoreModule.doc;
+        getDoc = firestoreModule.getDoc;
+      } catch (firestoreError) {
+        console.error('❌ Error importing Firestore functions:', firestoreError);
+        return this.getDefaultAssetList();
+      }
+      
+      // Now try to fetch the asset list
+      try {
+        const docRef = doc(db, 'gameAssets', 'assetList');
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          console.log('✅ Firebase asset list loaded successfully');
+          return docSnap.data();
+        } else {
+          console.warn('⚠️ No asset list found in Firebase, using default assets');
+          return this.getDefaultAssetList();
+        }
+      } catch (firestoreError) {
+        console.error('❌ Error fetching from Firestore:', firestoreError);
         return this.getDefaultAssetList();
       }
     } catch (error) {
-      console.error("❌ Error fetching asset list from Firebase:", error);
+      console.error('❌ Error in fetchAssetList:', error);
       return this.getDefaultAssetList();
     }
   }
