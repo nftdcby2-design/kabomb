@@ -1153,304 +1153,38 @@
         }
 
         .start-button {
-            background: linear-gradient(145deg, #4682B4, #87CEEB);
-            border: none;
-            padding: 15px 30px;
-            font-size: 20px;
-            font-weight: bold;
-            color: white;
-            border-radius: 15px;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            border: 2px solid #FFD700;
+            border-radius: 8px;
+            color: #000;
             cursor: pointer;
-            margin: 0;
-            width: 100%;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 8px 16px rgba(70, 130, 180, 0.3);
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-            animation: pulse 2s infinite;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px;
+            padding: 12px 24px;
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease;
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .start-button:hover {
             transform: scale(1.05);
-            box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
         }
 
         .start-button:active {
             transform: scale(0.95);
         }
 
-        .start-button.coming-soon {
-            background: linear-gradient(145deg, #666, #444);
-            color: #999;
+        .start-button[disabled] {
+            opacity: 0.5;
             cursor: not-allowed;
-            animation: none;
-            margin-top: 10px;
-            opacity: 0.7;
-        }
-
-        .start-button.coming-soon:hover {
-            transform: none;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-        }
-
-        /* Recharge Loading Bar Styles */
-        .recharge-container {
-            margin: 15px 0;
-            padding: 15px;
-            background: rgba(135, 206, 235, 0.3);
-            border-radius: 12px;
-            border: 2px solid rgba(70, 130, 180, 0.4);
-            backdrop-filter: blur(10px);
-        }
-
-        .recharge-label {
-            color: #4682B4;
-            font-size: 16px;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 10px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-        }
-
-        .recharge-bar {
-            width: 100%;
-            height: 8px;
-            background: rgba(135, 206, 235, 0.2);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 8px;
-            border: 1px solid rgba(70, 130, 180, 0.3);
-        }
-
-        .recharge-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #00FF00, #32CD32, #00FF00);
-            border-radius: 4px;
-            width: 100%;
-            transition: width 0.3s ease;
-            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-            animation: rechargeGlow 2s ease-in-out infinite alternate;
-        }
-
-        .recharge-fill.charging {
-            background: linear-gradient(90deg, #FFD700, #FFA500, #FFD700);
-            animation: chargingGlow 1s ease-in-out infinite alternate;
-        }
-
-        .recharge-fill.depleted {
-            background: linear-gradient(90deg, #FF4444, #CC0000, #FF4444);
-            animation: depletedGlow 1s ease-in-out infinite alternate;
-        }
-
-        .recharge-text {
-            color: #87CEEB;
-            font-size: 14px;
-            text-align: center;
-            font-weight: bold;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-        }
-
-        @keyframes rechargeGlow {
-            0% { box-shadow: 0 0 10px rgba(0, 255, 0, 0.5); }
-            100% { box-shadow: 0 0 20px rgba(0, 255, 0, 0.8); }
-        }
-
-        @keyframes chargingGlow {
-            0% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
-            100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.8); }
-        }
-
-        @keyframes depletedGlow {
-            0% { box-shadow: 0 0 10px rgba(255, 68, 68, 0.5); }
-            100% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.8); }
-        }
-
-        .wallet-section {
-            margin: 0 0 25px 0;
-            padding: 25px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-            border-radius: 16px;
-            border: 1px solid rgba(255, 215, 0, 0.4);
-            backdrop-filter: blur(10px);
-        }
-
-        .wallet-section h3 {
-            color: #FFD700;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 18px;
-            font-weight: 600;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            letter-spacing: 0.5px;
-        }
-
-        .player-info-section {
-            margin: 12px 0;
-        }
-
-        .player-info-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            padding: 3px 0;
-            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
-        }
-
-        .player-info-item:last-child {
-            border-bottom: none;
-        }
-
-        .player-info-item span:first-child {
-            color: #87CEEB;
-            font-weight: bold;
-        }
-
-        .player-info-item span:last-child {
-            color: #FFD700;
-            font-weight: bold;
-        }
-
-
-
-        .loading-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, #87CEEB 0%, #B0E0E6 50%, #E0F6FF 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #4682B4;
-            z-index: 100;
+            background: linear-gradient(45deg, #ccc, #999);
+            border-color: #999;
         }
         
-        .loading-screen h2 {
-            font-size: 36px;
-            margin-bottom: 30px;
-            color: #4682B4;
-            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
-            animation: bounce 2s infinite;
-        }
-        
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-            40% { transform: translateY(-10px); }
-            60% { transform: translateY(-5px); }
-        }
-        
-        .loading-bar {
-            width: 300px;
-            height: 20px;
-            background: rgba(135, 206, 235, 0.3);
-            border: 2px solid #4682B4;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 15px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .loading-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4682B4, #87CEEB);
-            transition: width 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .loading-fill::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
-            animation: loading-shimmer 1.5s infinite;
-        }
-        
-        @keyframes loading-shimmer {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
-        
-        .loading-text {
-            color: #4682B4;
-            font-size: 16px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-        }
-        
-
-        
-        @media (max-width: 768px) {
-            .mobile-controls {
-                display: flex;
-            }
-            
-            .game-container {
-                border-radius: 0;
-                border: none;
-            }
-            
-            .ui-overlay {
-                top: 10px;
-                left: 10px;
-                right: 10px;
-            }
-            
-            .left-panel, .right-panel {
-                padding: 10px;
-            }
-            
-            .left-panel {
-                min-width: 300px;
-            }
-            
-            .health-container, .bomb-container {
-                display: block;
-                width: 100%;
-                margin-left: 0;
-                margin-bottom: 10px;
-            }
-            
-            .right-panel {
-                min-width: 300px;
-            }
-            
-            .score-container, .total-score-container, .level-container, .lives-container {
-                display: block;
-                width: 100%;
-                margin-left: 0;
-                margin-bottom: 10px;
-            }
-            
-            .health-bar {
-                width: 100%;
-                height: 20px;
-            }
-            
-            .menu-button {
-                top: 10px;
-                left: 10px;
-                width: 45px;
-                height: 45px;
-                font-size: 18px;
-            }
-            
-            .sound-toggle {
-                font-size: 12px;
-                padding: 6px 10px;
-            }
-            
-            .controls {
-                top: 65px;
-                left: 10px;
-                padding: 15px;
-                font-size: 11px;
-                min-width: 180px;
-            }
-        }
+        /* ... existing styles ... */
     </style>
 </head>
 <body>
@@ -1550,7 +1284,7 @@
                     <button class="connect-wallet-btn" id="connectWalletBtn">Connect Wallet</button>
                 </div>
                 
-                <div id="startButtonContainer" style="display: none; margin: 0; text-align: center;">
+                <div id="startButtonContainer" style="display: block; margin: 0; text-align: center;">
                     <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.5), transparent); margin: 20px 0;"></div>
                     
                     <!-- Recharge Loading Bar -->
@@ -2318,6 +2052,272 @@
                 console.error('❌ Error initializing Web3 components:', error);
                 console.warn('⚠️ Starting game without full Web3 integration...');
                 
+                // Mark Web3 as ready even if there were errors
+                window.web3Ready = true;
+                
+                // Initialize minimal systems for game to work
+                try {
+                    initializeRechargeSystem();
+                    initializeSettingsPanel();
+                } catch (fallbackError) {
+                    console.error('❌ Even fallback initialization failed:', fallbackError);
+                }
+                
+                // Don't show alert - let the game try to start
+                // alert('Error initializing Web3 components: ' + error.message);
+            }
+        });
+        
+        // Recharge System - Now handled by RechargeManager
+        function initializeRechargeSystem() {
+            console.log('⚡ Recharge system initialization - now handled by RechargeManager');
+            
+            // The actual recharge logic is now handled by RechargeManager
+            // This function is kept for compatibility but does nothing
+            // RechargeManager will be initialized when wallet connects
+        }
+        
+        // Settings Panel Initialization
+        function initializeSettingsPanel() {
+            console.log('⚙️ Initializing settings panel...');
+            
+            const settingsBtn = document.getElementById('settingsBtn');
+            const settingsPanel = document.getElementById('settingsPanel');
+            const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            // Settings button click handler
+            if (settingsBtn) {
+                settingsBtn.addEventListener('click', () => {
+                    settingsPanel.classList.add('show');
+                    updateSettingsData();
+                });
+            }
+            
+            // Close button click handler
+            if (closeSettingsBtn) {
+                closeSettingsBtn.addEventListener('click', () => {
+                    settingsPanel.classList.remove('show');
+                });
+            }
+            
+            // Close on outside click
+            settingsPanel.addEventListener('click', (e) => {
+                if (e.target === settingsPanel) {
+                    settingsPanel.classList.remove('show');
+                }
+            });
+            
+            // Tab switching
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabName = btn.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    btn.classList.add('active');
+                    document.getElementById(`${tabName}-tab`).classList.add('active');
+                    
+                    // Load specific tab data
+                    loadTabData(tabName);
+                });
+            });
+            
+            // Audio controls
+            const settingsSoundToggle = document.getElementById('settingsSoundToggle');
+            const settingsMusicToggle = document.getElementById('settingsMusicToggle');
+            const volumeSlider = document.getElementById('volumeSlider');
+            const volumeValue = document.querySelector('.volume-value');
+            
+            if (settingsSoundToggle) {
+                settingsSoundToggle.addEventListener('click', () => {
+                    const isOn = settingsSoundToggle.textContent === 'ON';
+                    settingsSoundToggle.textContent = isOn ? 'OFF' : 'ON';
+                    settingsSoundToggle.classList.toggle('off', isOn);
+                    
+                    // Update game sound settings
+                    if (window.game && window.game.soundManager) {
+                        window.game.soundManager.soundEnabled = !isOn;
+                    }
+                });
+            }
+            
+            if (settingsMusicToggle) {
+                settingsMusicToggle.addEventListener('click', () => {
+                    const isOn = settingsMusicToggle.textContent === 'ON';
+                    settingsMusicToggle.textContent = isOn ? 'OFF' : 'ON';
+                    settingsMusicToggle.classList.toggle('off', isOn);
+                    
+                    // Update game music settings
+                    if (window.game && window.game.soundManager) {
+                        window.game.soundManager.musicEnabled = !isOn;
+                        if (isOn) {
+                            window.game.soundManager.stopBackgroundMusic();
+                        } else {
+                            window.game.soundManager.startBackgroundMusic();
+                        }
+                    }
+                });
+            }
+            
+            if (volumeSlider && volumeValue) {
+                volumeSlider.addEventListener('input', (e) => {
+                    const volume = e.target.value;
+                    volumeValue.textContent = volume + '%';
+                    
+                    // Update game volume
+                    if (window.game && window.game.soundManager) {
+                        window.game.soundManager.setVolume(volume / 100);
+                    }
+                });
+            }
+            
+            console.log('✅ Settings panel initialized');
+        }
+        
+        // Update settings data
+        function updateSettingsData() {
+            // Update profile data
+            if (window.walletConnection && window.walletConnection.publicKey) {
+                const walletAddress = window.walletConnection.publicKey.toString();
+                document.getElementById('profileWallet').textContent = 
+                    walletAddress.substring(0, 8) + '...' + walletAddress.substring(walletAddress.length - 8);
+            }
+            
+            if (window.playerProfile) {
+                document.getElementById('profileUsername').textContent = window.playerProfile.username || '-';
+                document.getElementById('profileLevel').textContent = window.playerProfile.level || 1;
+                document.getElementById('profileTotalScore').textContent = window.playerProfile.totalScore || 0;
+                document.getElementById('profileGamesPlayed').textContent = window.playerProfile.gamesPlayed || 0;
+                document.getElementById('settingsTokenBalance').textContent = window.playerProfile.boomTokens || 0;
+            }
+            
+            // Update audio settings
+            if (window.game && window.game.soundManager) {
+                const soundToggle = document.getElementById('settingsSoundToggle');
+                const musicToggle = document.getElementById('settingsMusicToggle');
+                const volumeSlider = document.getElementById('volumeSlider');
+                
+                if (soundToggle) {
+                    soundToggle.textContent = window.game.soundManager.soundEnabled ? 'ON' : 'OFF';
+                    soundToggle.classList.toggle('off', !window.game.soundManager.soundEnabled);
+                }
+                
+                if (musicToggle) {
+                    musicToggle.textContent = window.game.soundManager.musicEnabled ? 'ON' : 'OFF';
+                    musicToggle.classList.toggle('off', !window.game.soundManager.musicEnabled);
+                }
+                
+                if (volumeSlider) {
+                    volumeSlider.value = Math.round(window.game.soundManager.volume * 100);
+                    document.querySelector('.volume-value').textContent = volumeSlider.value + '%';
+                }
+            }
+        }
+        
+        // Load specific tab data
+        function loadTabData(tabName) {
+            switch(tabName) {
+                case 'leaderboard':
+                    loadLeaderboard();
+                    break;
+                case 'matches':
+                    loadMatches();
+                    break;
+                case 'tokens':
+                    loadTokenHistory();
+                    break;
+            }
+        }
+        
+        // Load leaderboard data
+        async function loadLeaderboard() {
+            const leaderboardList = document.getElementById('leaderboardList');
+            if (!leaderboardList) return;
+            
+            try {
+                const response = await fetch('/api/players');
+                const players = await response.json();
+                
+                if (players.length === 0) {
+                    leaderboardList.innerHTML = '<div class="no-leaderboard">No players found</div>';
+                    return;
+                }
+                
+                const leaderboardHTML = players.slice(0, 10).map((player, index) => `
+                    <div class="leaderboard-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(135, 206, 235, 0.2); border-radius: 8px; margin-bottom: 8px; border: 1px solid rgba(70, 130, 180, 0.3);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-weight: bold; color: #4682B4;">#${index + 1}</span>
+                            <span style="color: #4682B4;">${player.username || 'Anonymous'}</span>
+                        </div>
+                        <span style="color: #4682B4; font-weight: bold;">${player.total_score || 0}</span>
+                    </div>
+                `).join('');
+                
+                leaderboardList.innerHTML = leaderboardHTML;
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+                leaderboardList.innerHTML = '<div class="error">Failed to load leaderboard</div>';
+            }
+        }
+        
+        // Load matches data
+        async function loadMatches() {
+            const matchesList = document.getElementById('matchesList');
+            if (!matchesList) return;
+            
+            try {
+                if (window.walletConnection && window.walletConnection.publicKey) {
+                    const walletAddress = window.walletConnection.publicKey.toString();
+                    const response = await fetch(`/api/players/${walletAddress}/sessions`);
+                    const sessions = await response.json();
+                    
+                    if (sessions.length === 0) {
+                        matchesList.innerHTML = '<div class="no-matches">No matches played yet</div>';
+                        return;
+                    }
+                    
+                    const matchesHTML = sessions.slice(0, 10).map(session => `
+                        <div class="match-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(135, 206, 235, 0.2); border-radius: 8px; margin-bottom: 8px; border: 1px solid rgba(70, 130, 180, 0.3);">
+                            <div style="display: flex; flex-direction: column; gap: 5px;">
+                                <span style="color: #4682B4; font-weight: bold;">Score: ${session.score_earned || 0}</span>
+                                <span style="color: #4682B4; font-size: 12px;">${new Date(session.session_start).toLocaleDateString()}</span>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="color: #4682B4;">Tokens: ${session.tokens_earned || 0}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    matchesList.innerHTML = matchesHTML;
+                } else {
+                    matchesList.innerHTML = '<div class="no-matches">Connect wallet to view matches</div>';
+                }
+            } catch (error) {
+                console.error('Error loading matches:', error);
+                matchesList.innerHTML = '<div class="error">Failed to load matches</div>';
+            }
+        }
+        
+        // Load token history
+        function loadTokenHistory() {
+            const tokenTransactions = document.getElementById('tokenTransactions');
+            if (!tokenTransactions) return;
+            
+            // For now, show a simple message. This can be expanded with actual transaction history
+            tokenTransactions.innerHTML = '<div class="no-transactions">Token transaction history coming soon</div>';
+        }
+        
+        // Game Over Button Handlers
+        function initializeGameOverButtons() {
+            const profileBtn = document.getElementById('profileBtn');
+            const rechargeBtn = document.getElementById('rechargeBtn');
+            
+            // Profile Button Handler - Navigate to Recharged page
                 // Mark Web3 as ready even if there were errors
                 window.web3Ready = true;
                 
