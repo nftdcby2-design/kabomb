@@ -1748,11 +1748,38 @@
     <!-- <script src="game-assets-loader.js"></script> -->
     <!-- <script src="game-optimized.js"></script> -->
     <!-- <script src="game-emergency-fix.js"></script> -->
+    
+    <!-- Preload critical game assets -->
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('💽 Pre-caching critical game assets...');
+            const criticalAssets = [
+                'heart.png',
+                'shield.png',
+                'lvl.png',
+                'lives.png',
+                'Sprites/emojis/bomb.png',
+                'Sprites/1-Player-Bomb Guy/1-Idle/1.png',
+                'Sprites/1-Player-Bomb Guy/2-Run/1.png',
+                'Sprites/1-Player-Bomb Guy/4-Jump/1.png',
+                'Sprites/1-Player-Bomb Guy/5-Fall/1.png'
+            ];
+            
+            // Preload images with fetch
+            criticalAssets.forEach(asset => {
+                fetch(asset)
+                    .then(response => response.blob())
+                    .then(() => console.log(`✅ Pre-cached: ${asset}`))
+                    .catch(error => console.warn(`⚠️ Failed to pre-cache: ${asset}`, error));
+            });
+        });
+    </script>
+    
     <script src="game.js" onload="console.log('✅ game.js loaded successfully'); window.gameJsLoaded = true;" onerror="console.error('❌ Failed to load game.js'); window.gameJsLoaded = false;"></script>
     
-    <!-- Firebase Asset Loader -->
-    <script type="module" src="firebase-config.js"></script>
-    <script type="module" src="firebase-asset-loader.js"></script>
+    <!-- Firebase is optional, removed for reliability -->
+    <!-- <script type="module" src="firebase-config.js"></script> -->
+    <!-- <script type="module" src="firebase-asset-loader.js"></script> -->
     
     <!-- Ensure PirateBombGame is globally available -->
     <script>

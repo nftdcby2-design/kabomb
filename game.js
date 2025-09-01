@@ -607,97 +607,27 @@ class PirateBombGame {
 		try {
 			console.log('🚀 Starting robust game boot with enhanced error handling...');
 			
-			// Step 1: Load assets with Firebase asset loader
-			console.log('Step 1: Loading game assets from Firebase...');
+			// Step 1: Load assets using default asset loader
+			console.log('Step 1: Loading game assets...');
 			
-			// Try to import Firebase asset loader
-			let firebaseAssetLoader;
-			try {
-				console.log('🔄 Attempting to load Firebase asset loader...');
-				
-				// Add timeout protection for Firebase import
-				const importPromise = import('./firebase-asset-loader.js');
-				
-				// Create a timeout promise
-				const timeoutPromise = new Promise((_, reject) => {
-					setTimeout(() => reject(new Error('Firebase import timed out after 5 seconds')), 5000);
-				});
-				
-				// Race between import and timeout
-				const importResult = await Promise.race([importPromise, timeoutPromise]);
-				firebaseAssetLoader = importResult.default;
-				console.log('✅ Firebase asset loader imported successfully');
-			} catch (importError) {
-				console.warn('⚠️ Firebase asset loader not available:', importError.message);
-				console.log('⚙️ Using default asset loader instead');
-				const loader = new AssetLoader();
-				this.assets = await loader.loadAll((loaded, total) => {
-					const progress = (loaded / total) * 100;
-					try {
-						const loadingFill = document.getElementById('loadingFill');
-						const loadingText = document.getElementById('loadingText');
-						if (loadingFill) loadingFill.style.width = progress + '%';
-						if (loadingText) loadingText.textContent = `⚡ Loading... ${Math.round(progress)}%`;
-					} catch (uiError) {
-						console.warn('⚠️ Loading UI update failed:', uiError);
-					}
-				});
-			}
-			
-			// If Firebase asset loader is available, use it
-			if (firebaseAssetLoader) {
-				console.log('🔄 Using Firebase asset loader...');
-				
-				// Show loading UI
+			// Use the built-in reliable asset loader
+			const loader = new AssetLoader();
+			this.assets = await loader.loadAll((loaded, total) => {
+				const progress = (loaded / total) * 100;
 				try {
 					const loadingFill = document.getElementById('loadingFill');
 					const loadingText = document.getElementById('loadingText');
-					if (loadingFill) loadingFill.style.width = '0%';
-					if (loadingText) loadingText.textContent = '⚡ Connecting to Firebase...';
+					if (loadingFill) loadingFill.style.width = progress + '%';
+					if (loadingText) loadingText.textContent = `⚡ Loading... ${Math.round(progress)}%`;
 				} catch (uiError) {
 					console.warn('⚠️ Loading UI update failed:', uiError);
 				}
-				
-				// Load critical assets
-				const success = await firebaseAssetLoader.loadCriticalAssets((loaded, total) => {
-					const progress = (loaded / total) * 100;
-					try {
-						const loadingFill = document.getElementById('loadingFill');
-						const loadingText = document.getElementById('loadingText');
-						if (loadingFill) loadingFill.style.width = progress + '%';
-						if (loadingText) loadingText.textContent = `⚡ Loading critical assets... ${Math.round(progress)}%`;
-					} catch (uiError) {
-						console.warn('⚠️ Loading UI update failed:', uiError);
-					}
-				});
-				
-				if (success) {
-					this.assets = firebaseAssetLoader.getAssets();
-					console.log('✅ Critical assets loaded successfully from Firebase');
-					
-					// Start lazy loading in background
-					firebaseAssetLoader.startLazyLoading();
-				} else {
-					console.warn('⚠️ Firebase asset loading failed, falling back to default loader');
-					const loader = new AssetLoader();
-					this.assets = await loader.loadAll((loaded, total) => {
-						const progress = (loaded / total) * 100;
-						try {
-							const loadingFill = document.getElementById('loadingFill');
-							const loadingText = document.getElementById('loadingText');
-							if (loadingFill) loadingFill.style.width = progress + '%';
-							if (loadingText) loadingText.textContent = `⚡ Loading... ${Math.round(progress)}%`;
-						} catch (uiError) {
-							console.warn('⚠️ Loading UI update failed:', uiError);
-						}
-					});
-				}
-			}
+			});
+			console.log('✅ Assets loaded successfully');
 			
 			if (!this.assets) {
 				throw new Error('Assets failed to load completely');
 			}
-			console.log('✅ Assets loaded successfully');
 
 			// Step 2: Validate and create fallback sprites if needed
 			console.log('Step 2: Validating player assets...');
