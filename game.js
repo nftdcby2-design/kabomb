@@ -607,20 +607,79 @@ class PirateBombGame {
 		try {
 			console.log('🚀 Starting robust game boot with enhanced error handling...');
 			
-			// Step 1: Load assets with new advanced loader
-			console.log('Step 1: Loading game assets...');
-			const loader = new AssetLoader();
-			this.assets = await loader.loadAll((loaded, total) => {
-				const progress = (loaded / total) * 100;
+			// Step 1: Load assets with Firebase asset loader
+			console.log('Step 1: Loading game assets from Firebase...');
+			
+			// Try to import Firebase asset loader
+			let firebaseAssetLoader;
+			try {
+				firebaseAssetLoader = await import('./firebase-asset-loader.js');
+				firebaseAssetLoader = firebaseAssetLoader.default;
+			} catch (importError) {
+				console.warn('⚠️ Firebase asset loader not available, using default asset loader');
+				const loader = new AssetLoader();
+				this.assets = await loader.loadAll((loaded, total) => {
+					const progress = (loaded / total) * 100;
+					try {
+						const loadingFill = document.getElementById('loadingFill');
+						const loadingText = document.getElementById('loadingText');
+						if (loadingFill) loadingFill.style.width = progress + '%';
+						if (loadingText) loadingText.textContent = `⚡ Loading... ${Math.round(progress)}%`;
+					} catch (uiError) {
+						console.warn('⚠️ Loading UI update failed:', uiError);
+					}
+				});
+			}
+			
+			// If Firebase asset loader is available, use it
+			if (firebaseAssetLoader) {
+				console.log('🔄 Using Firebase asset loader...');
+				
+				// Show loading UI
 				try {
 					const loadingFill = document.getElementById('loadingFill');
 					const loadingText = document.getElementById('loadingText');
-					if (loadingFill) loadingFill.style.width = progress + '%';
-					if (loadingText) loadingText.textContent = `⚡ Loading... ${Math.round(progress)}%`;
+					if (loadingFill) loadingFill.style.width = '0%';
+					if (loadingText) loadingText.textContent = '⚡ Connecting to Firebase...';
 				} catch (uiError) {
 					console.warn('⚠️ Loading UI update failed:', uiError);
 				}
-			});
+				
+				// Load critical assets
+				const success = await firebaseAssetLoader.loadCriticalAssets((loaded, total) => {
+					const progress = (loaded / total) * 100;
+					try {
+						const loadingFill = document.getElementById('loadingFill');
+						const loadingText = document.getElementById('loadingText');
+						if (loadingFill) loadingFill.style.width = progress + '%';
+						if (loadingText) loadingText.textContent = `⚡ Loading critical assets... ${Math.round(progress)}%`;
+					} catch (uiError) {
+						console.warn('⚠️ Loading UI update failed:', uiError);
+					}
+				});
+				
+				if (success) {
+					this.assets = firebaseAssetLoader.getAssets();
+					console.log('✅ Critical assets loaded successfully from Firebase');
+					
+					// Start lazy loading in background
+					firebaseAssetLoader.startLazyLoading();
+				} else {
+					console.warn('⚠️ Firebase asset loading failed, falling back to default loader');
+					const loader = new AssetLoader();
+					this.assets = await loader.loadAll((loaded, total) => {
+						const progress = (loaded / total) * 100;
+						try {
+							const loadingFill = document.getElementById('loadingFill');
+							const loadingText = document.getElementById('loadingText');
+							if (loadingFill) loadingFill.style.width = progress + '%';
+							if (loadingText) loadingText.textContent = `⚡ Loading... ${Math.round(progress)}%`;
+						} catch (uiError) {
+							console.warn('⚠️ Loading UI update failed:', uiError);
+						}
+					});
+				}
+			}
 			
 			if (!this.assets) {
 				throw new Error('Assets failed to load completely');
