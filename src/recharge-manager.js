@@ -10,6 +10,13 @@ class RechargeManager {
 
     async initialize(walletAddress) {
         try {
+            // Development mode check
+            if (!walletAddress) {
+                console.log('🔧 Running in development mode - skipping recharge system');
+                this.isInitialized = true;
+                return true;
+            }
+            
             // If this is a different wallet, clean up the old one
             if (this.currentWallet && this.currentWallet !== walletAddress) {
                 console.log('🔋 Switching wallets, cleaning up old wallet:', this.currentWallet);

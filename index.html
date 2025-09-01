@@ -2155,16 +2155,21 @@
                 // Set up start button with recharge system integration
                 const startButton = document.getElementById('startButton');
                 if (startButton) {
+                    // Enable the button by default in development mode
+                    startButton.disabled = false;
+                    startButton.style.opacity = '1';
+                    startButton.style.cursor = 'pointer';
+                    
                     startButton.onclick = async () => {
                         console.log('🎮 Start button clicked!');
                         
-                        // Check if wallet is connected - make this optional for testing
+                        // Development mode - allow playing without wallet
                         if (!window.walletConnection || !window.walletConnection.isConnected) {
-                            console.warn('⚠️ Wallet not connected, but allowing game to start for testing');
-                            // For testing purposes, allow game to start without wallet
-                            // In production, uncomment the next two lines:
-                            // alert('Please connect your wallet first!');
-                            // return;
+                            console.warn('⚠️ Wallet not connected, starting game in development mode');
+                            if (typeof window.startGame === 'function') {
+                                window.startGame();
+                                return;
+                            }
                         }
                         
                         // Check if RechargeManager is available and player can play
