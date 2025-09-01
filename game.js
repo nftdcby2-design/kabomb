@@ -20,10 +20,17 @@ class AssetLoader {
 	// Load consecutive frames 1.png..N.png from a folder
 	async loadFrames(folderPath, frameCount) {
 		const frames = [];
+		// SIMPLE APPROACH: Try to load each frame, use fallback if it fails
 		for (let i = 1; i <= frameCount; i += 1) {
-			const src = encodeURI(`${folderPath}/${i}.png`);
-			const img = await this.loadImage(src);
-			frames.push(img);
+			const src = `${folderPath}/${i}.png`;
+			try {
+				const img = await this.loadImage(src);
+				frames.push(img);
+				console.log(`✅ Loaded ${src}`);
+			} catch (error) {
+				console.warn(`❌ Failed to load ${src}:`, error.message);
+				// Don't add failed frames to maintain array indexing
+			}
 		}
 		return frames;
 	}
@@ -31,8 +38,19 @@ class AssetLoader {
 	loadImage(src) {
 		return new Promise((resolve, reject) => {
 			const img = new Image();
-			img.onload = () => resolve(img);
-			img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+			// Add longer timeout for better loading
+			const timeout = setTimeout(() => {
+				reject(new Error(`Timeout loading: ${src}`));
+			}, 5000); // 5 second timeout
+			
+			img.onload = () => {
+				clearTimeout(timeout);
+				resolve(img);
+			};
+			img.onerror = () => {
+				clearTimeout(timeout);
+				reject(new Error(`Failed to load image: ${src}`));
+			};
 			img.src = src;
 		});
 	}
@@ -164,266 +182,172 @@ class AssetLoader {
 	}
 
 	async loadAll(onProgress) {
+		console.log('🔄 Loading game assets with SIMPLE loader');
 		let loaded = 0;
-		const addProgress = (total) => {
+		const totalSteps = 5; // Major asset categories
+		
+		const addProgress = () => {
 			loaded += 1;
-			if (onProgress) onProgress(loaded, total);
+			if (onProgress) onProgress(loaded, totalSteps);
 		};
 
-		// Enhanced loading - load all assets with timeout
-		const totalSteps = 50; // Increased count for more sprites
-		
 		try {
-			// Load only essential player animations with timeout
-		const playerManifest = this.getPlayerManifest();
+			// 1. Load player animations (directly, no fancy stuff)
+			console.log('👤 Loading player animations...');
+			const playerManifest = this.getPlayerManifest();
 			this.assets.player = {};
 			
-			// Load only the most important player animations
-			const essentialPlayerAnims = ['1-Idle', '2-Run', '4-Jump', '5-Fall', '7-Hit', '8-Dead Hit', '9-Dead Ground'];
-			for (const anim of essentialPlayerAnims) {
-				if (playerManifest[anim]) {
-					try {
-						console.log(`Loading player animation: ${anim} with ${playerManifest[anim]} frames from ${playerManifest._base}/${anim}`);
-						const frames = await Promise.race([
-							this.loadFrames(`${playerManifest._base}/${anim}`, playerManifest[anim]),
-							new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-						]);
-						console.log(`Successfully loaded ${anim}: ${frames.length} frames`);
-						this.assets.player[anim] = frames;
-					} catch (error) {
-						console.warn(`Failed to load player animation ${anim}:`, error);
-						this.assets.player[anim] = [];
-					}
-				} else {
-					console.warn(`Player animation ${anim} not found in manifest`);
-				}
-				addProgress(totalSteps);
+			// First try to load just Idle frame 1 to show something quickly
+			try {
+				const idleFirstFrame = await this.loadImage(`${playerManifest._base}/1-Idle/1.png`);
+				this.assets.player['1-Idle'] = [idleFirstFrame];
+				console.log('✅ Successfully loaded first player idle frame!');
+			} catch (error) {
+				console.warn('❌ Failed to load first player idle frame:', error.message);
+				this.assets.player['1-Idle'] = [];
 			}
-
-			// Load all enemy animations
-			const enemiesManifest = this.getEnemiesManifest();
-			this.assets.enemies = {};
 			
-			// Load all enemy types
-			const enemyTypes = ['Bald Pirate', 'Cucumber', 'Big Guy', 'Captain', 'Whale'];
-			for (const enemyName of enemyTypes) {
-				if (enemiesManifest[enemyName]) {
-			this.assets.enemies[enemyName] = {};
-					const essentialEnemyAnims = ['1-Idle', '2-Run', '4-Jump', '5-Fall', '7-Attack', '8-Hit', '9-Hit', '10-Dead Hit', '11-Dead Ground', '12-Hit', '13-Dead Hit', '14-Dead Ground'];
-					for (const anim of essentialEnemyAnims) {
-						if (enemiesManifest[enemyName][anim]) {
-							try {
-								const frames = await Promise.race([
-									this.loadFrames(`${enemiesManifest[enemyName].base}/${anim}`, enemiesManifest[enemyName][anim]),
-									new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-								]);
-				this.assets.enemies[enemyName][anim] = frames;
-								console.log(`Loaded ${enemyName} ${anim}: ${frames.length} frames`);
-							} catch (error) {
-								console.warn(`Failed to load enemy animation ${enemyName} ${anim}:`, error);
-								this.assets.enemies[enemyName][anim] = [];
+			// Then try to load essential animations
+			const playerAnims = ['1-Idle', '2-Run', '4-Jump', '5-Fall'];
+			for (const anim of playerAnims) {
+				// Skip Idle since we already tried it
+				if (anim === '1-Idle' && this.assets.player['1-Idle'].length > 0) continue;
+				
+				try {
+					console.log(`Loading ${anim}...`);
+					const frames = await this.loadFrames(`${playerManifest._base}/${anim}`, playerManifest[anim]);
+					if (frames.length > 0) {
+						this.assets.player[anim] = frames;
+						console.log(`✅ Loaded ${anim}: ${frames.length} frames`);
+					} else {
+						throw new Error('No frames loaded');
+					}
+				} catch (error) {
+					console.warn(`❌ Failed to load ${anim}:`, error.message);
+					this.assets.player[anim] = [];
+				}
+			}
+			addProgress();
+
+			// 2. Load enemies with simpler logic
+			try {
+				console.log('👾 Loading enemy animations...');
+				const enemiesManifest = this.getEnemiesManifest();
+				this.assets.enemies = {};
+				
+				// Load all enemy types
+				const enemyTypes = ['Bald Pirate', 'Cucumber', 'Big Guy', 'Captain', 'Whale'];
+				for (const enemyName of enemyTypes) {
+					if (enemiesManifest[enemyName]) {
+						this.assets.enemies[enemyName] = {};
+						const essentialEnemyAnims = ['1-Idle', '2-Run', '4-Jump', '5-Fall', '7-Attack'];
+						for (const anim of essentialEnemyAnims) {
+							if (enemiesManifest[enemyName][anim]) {
+								try {
+									const frames = await this.loadFrames(`${enemiesManifest[enemyName].base}/${anim}`, enemiesManifest[enemyName][anim]);
+									this.assets.enemies[enemyName][anim] = frames;
+									console.log(`✅ Loaded ${enemyName} ${anim}: ${frames.length} frames`);
+								} catch (error) {
+									console.warn(`❌ Failed to load enemy animation ${enemyName} ${anim}:`, error.message);
+									this.assets.enemies[enemyName][anim] = [];
+								}
 							}
 						}
-				addProgress(totalSteps);
 					}
-			}
-		}
-
-		// Load bomb animations
-		this.assets.objects = {};
-		this.assets.objects['1-BOMB'] = {};
-		const bombAnims = ['1-Bomb Off', '2-Bomb On', '3-Explotion'];
-		for (const anim of bombAnims) {
-			try {
-				const bombFrames = await Promise.race([
-					this.loadFrames(`Sprites/7-Objects/1-BOMB/${anim}`, this.getObjectsManifest().bomb[anim]),
-					new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-				]);
-				this.assets.objects['1-BOMB'][anim] = bombFrames;
-				console.log(`Loaded bomb ${anim}: ${bombFrames.length} frames`);
+				}
 			} catch (error) {
-				console.warn(`Failed to load bomb animation ${anim}:`, error);
-				this.assets.objects['1-BOMB'][anim] = [];
+				console.error('❌ Enemy loading failed:', error);
 			}
-			addProgress(totalSteps);
-		}
-
-		// Load door animations
-		this.assets.objects['2-Door'] = {};
-		const doorAnims = ['1-Closed', '2-Opening', '3-Closing'];
-		for (const anim of doorAnims) {
+			addProgress();
+			
+			// 3. Load objects (bombs, doors) with simpler logic
 			try {
-				const doorFrames = await Promise.race([
-					this.loadFrames(`Sprites/7-Objects/2-Door/${anim}`, this.getObjectsManifest().door[anim]),
-					new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-				]);
-				this.assets.objects['2-Door'][anim] = doorFrames;
-				console.log(`Loaded door ${anim}: ${doorFrames.length} frames`);
-			} catch (error) {
-				console.warn(`Failed to load door animation ${anim}:`, error);
-				this.assets.objects['2-Door'][anim] = [];
-			}
-			addProgress(totalSteps);
-		}
+				console.log('💣 Loading object animations...');
+				this.assets.objects = {};
+				
+				// Load bomb animations
+				this.assets.objects['1-BOMB'] = {};
+				const bombAnims = ['1-Bomb Off', '2-Bomb On', '3-Explotion'];
+				for (const anim of bombAnims) {
+					try {
+						const bombFrames = await this.loadFrames(`Sprites/7-Objects/1-BOMB/${anim}`, this.getObjectsManifest().bomb[anim]);
+						this.assets.objects['1-BOMB'][anim] = bombFrames;
+						console.log(`✅ Loaded bomb ${anim}: ${bombFrames.length} frames`);
+					} catch (error) {
+						console.warn(`❌ Failed to load bomb animation ${anim}:`, error.message);
+						this.assets.objects['1-BOMB'][anim] = [];
+					}
+				}
 
-		// Load tile sprites - using blocks.png, block2.png, and block3.png for different levels
-		this.assets.objects['tiles'] = {};
-		
-		// Load background images for different levels
-		this.assets.backgrounds = {};
-		
-		// Load blocks.png (for level 1)
-		try {
-			const blocksImg = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/blocks.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.objects['tiles']['blocks'] = blocksImg ? [blocksImg] : [];
-			console.log('Loaded blocks.png tile set');
+				// Load door animations
+				this.assets.objects['2-Door'] = {};
+				const doorAnims = ['1-Closed', '2-Opening', '3-Closing'];
+				for (const anim of doorAnims) {
+					try {
+						const doorFrames = await this.loadFrames(`Sprites/7-Objects/2-Door/${anim}`, this.getObjectsManifest().door[anim]);
+						this.assets.objects['2-Door'][anim] = doorFrames;
+						console.log(`✅ Loaded door ${anim}: ${doorFrames.length} frames`);
+					} catch (error) {
+						console.warn(`❌ Failed to load door animation ${anim}:`, error.message);
+						this.assets.objects['2-Door'][anim] = [];
+					}
+				}
+			} catch (error) {
+				console.error('❌ Object loading failed:', error);
+			}
+			addProgress();
+			
+			// 4. Load tile sprites and backgrounds
+			try {
+				console.log('🧱 Loading tile sets and backgrounds...');
+				this.assets.objects['tiles'] = {};
+				this.assets.backgrounds = {};
+				
+				// Load tile sets
+				const tileSets = ['blocks', 'block2', 'block3', 'block4', 'block5', 'block6'];
+				for (const tileSet of tileSets) {
+					try {
+						const tileImg = await this.loadImage(`Sprites/8-Tile-Sets/${tileSet}.png`);
+						this.assets.objects['tiles'][tileSet] = [tileImg];
+						console.log(`✅ Loaded tile set ${tileSet}.png`);
+					} catch (error) {
+						console.warn(`❌ Failed to load tile set ${tileSet}.png:`, error.message);
+						this.assets.objects['tiles'][tileSet] = [];
+					}
+				}
+				
+				// Load background images
+				const bgSets = ['bgblocks', 'bgblock2', 'bgblock3', 'bgblock4', 'bgblock5', 'bgblock6'];
+				for (const bgSet of bgSets) {
+					try {
+						const bgImg = await this.loadImage(`Sprites/8-Tile-Sets/${bgSet}.png`);
+						this.assets.backgrounds[bgSet] = bgImg;
+						console.log(`✅ Loaded background ${bgSet}.png`);
+					} catch (error) {
+						console.warn(`❌ Failed to load background ${bgSet}.png:`, error.message);
+						this.assets.backgrounds[bgSet] = null;
+					}
+				}
+			} catch (error) {
+				console.error('❌ Tile/background loading failed:', error);
+			}
+			addProgress();
+			
+			// 5. Create fallback sprites for any missing assets
+			console.log('🎨 Creating fallback sprites...');
+			this.createFallbackSprites();
+			
+			// Done!
+			addProgress();
+			console.log('✅ Asset loading complete!');
+			return this.assets;
 		} catch (error) {
-			console.warn('Failed to load blocks.png:', error);
-			this.assets.objects['tiles']['blocks'] = [];
+			console.error('❌ Asset loading failed:', error);
+			// Create fallback sprites as a last resort
+			this.createFallbackSprites();
+			return this.assets;
 		}
-		
-		// Load block2.png (for level 2)
-		try {
-			const block2Img = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/block2.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.objects['tiles']['block2'] = block2Img ? [block2Img] : [];
-			console.log('Loaded block2.png tile set');
-		} catch (error) {
-			console.warn('Failed to load block2.png:', error);
-			this.assets.objects['tiles']['block2'] = [];
-		}
-		
-		// Load block3.png (for level 3+)
-				try {
-			const block3Img = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/block3.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.objects['tiles']['block3'] = block3Img ? [block3Img] : [];
-			console.log('Loaded block3.png tile set');
-		} catch (error) {
-			console.warn('Failed to load block3.png:', error);
-			this.assets.objects['tiles']['block3'] = [];
-		}
-		
-		// Load block4.png (for level 4)
-		try {
-			const block4Img = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/block4.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.objects['tiles']['block4'] = block4Img ? [block4Img] : [];
-			console.log('Loaded block4.png tile set');
-		} catch (error) {
-			console.warn('Failed to load block4.png:', error);
-			this.assets.objects['tiles']['block4'] = [];
-		}
-		
-		// Load block5.png (for level 5)
-		try {
-			const block5Img = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/block5.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.objects['tiles']['block5'] = block5Img ? [block5Img] : [];
-			console.log('Loaded block5.png tile set');
-		} catch (error) {
-			console.warn('Failed to load block5.png:', error);
-			this.assets.objects['tiles']['block5'] = [];
-		}
-		
-		// Load block6.png (for level 6)
-		try {
-			const block6Img = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/block6.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.objects['tiles']['block6'] = block6Img ? [block6Img] : [];
-			console.log('✅ Loaded block6.png tile set for level 6');
-		} catch (error) {
-			console.warn('❌ Failed to load block6.png:', error);
-			this.assets.objects['tiles']['block6'] = [];
-		}
-		
-		// Load background images
-		try {
-			const bgblocksImg = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/bgblocks.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.backgrounds['bgblocks'] = bgblocksImg;
-			console.log('Loaded bgblocks.png background');
-		} catch (error) {
-			console.warn('Failed to load bgblocks.png:', error);
-			this.assets.backgrounds['bgblocks'] = null;
-		}
-		
-		try {
-			const bgblock2Img = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/bgblock2.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.backgrounds['bgblock2'] = bgblock2Img;
-			console.log('Loaded bgblock2.png background');
-		} catch (error) {
-			console.warn('Failed to load bgblock2.png:', error);
-			this.assets.backgrounds['bgblock2'] = null;
-		}
-		
-		try {
-			const bgblock3Img = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/bgblock3.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.backgrounds['bgblock3'] = bgblock3Img;
-			console.log('Loaded bgblock3.png background');
-		} catch (error) {
-			console.warn('Failed to load bgblock3.png:', error);
-			this.assets.backgrounds['bgblock3'] = null;
-		}
-		
-		try {
-			const bgblock4Img = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/bgblock4.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.backgrounds['bgblock4'] = bgblock4Img;
-			console.log('Loaded bgblock4.png background');
-		} catch (error) {
-			console.warn('Failed to load bgblock4.png:', error);
-			this.assets.backgrounds['bgblock4'] = null;
-		}
-		
-		try {
-			const bgblock5Img = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/bgblock5.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.backgrounds['bgblock5'] = bgblock5Img;
-			console.log('Loaded bgblock5.png background');
-		} catch (error) {
-			console.warn('Failed to load bgblock5.png:', error);
-			this.assets.backgrounds['bgblock5'] = null;
-		}
-		
-		try {
-			const bgblock6Img = await Promise.race([
-				this.loadImage('Sprites/8-Tile-Sets/bgblock6.png'),
-				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-			]);
-			this.assets.backgrounds['bgblock6'] = bgblock6Img;
-			console.log('✅ Loaded bgblock6.png background for level 6');
-		} catch (error) {
-			console.warn('❌ Failed to load bgblock6.png:', error);
-			this.assets.backgrounds['bgblock6'] = null;
-		}
-		
-		addProgress(totalSteps);
+	}
 
 		// Load shield image for potions
 		try {
@@ -739,6 +663,67 @@ class PirateBombGame {
 			return canvas;
 		};
 
+		// Create a proper pirate character sprite
+		const createPlayerSprite = (color = '#F5D0A9', size = 64) => {
+			const canvas = document.createElement('canvas');
+			canvas.width = size;
+			canvas.height = size;
+			const ctx = canvas.getContext('2d');
+			
+			// Scale factor for different sizes
+			const scale = size / 64;
+			
+			// Draw pirate body (pirate skin tone)
+			ctx.fillStyle = color;
+			ctx.beginPath();
+			ctx.arc(size/2, size/2, size/2 - 4 * scale, 0, Math.PI * 2);
+			ctx.fill();
+			
+			// Add darker border
+			ctx.strokeStyle = '#8B4513';
+			ctx.lineWidth = 2 * scale;
+			ctx.stroke();
+			
+			// Add eyes
+			ctx.fillStyle = '#FFFFFF';
+			ctx.beginPath();
+			ctx.arc(size/2 - 10 * scale, size/2 - 8 * scale, 5 * scale, 0, Math.PI * 2);
+			ctx.arc(size/2 + 10 * scale, size/2 - 8 * scale, 5 * scale, 0, Math.PI * 2);
+			ctx.fill();
+			
+			// Add pupils
+			ctx.fillStyle = '#000000';
+			ctx.beginPath();
+			ctx.arc(size/2 - 10 * scale, size/2 - 8 * scale, 2 * scale, 0, Math.PI * 2);
+			ctx.arc(size/2 + 10 * scale, size/2 - 8 * scale, 2 * scale, 0, Math.PI * 2);
+			ctx.fill();
+			
+			// Add beard
+			ctx.fillStyle = '#8B4513';
+			ctx.beginPath();
+			ctx.arc(size/2, size/2 + 10 * scale, 12 * scale, 0, Math.PI);
+			ctx.fill();
+			
+			// Add pirate hat
+			ctx.fillStyle = '#000000';
+			ctx.beginPath();
+			ctx.ellipse(size/2, size/2 - 15 * scale, 25 * scale, 10 * scale, 0, 0, Math.PI * 2);
+			ctx.fill();
+			
+			// Add hat band
+			ctx.fillStyle = '#FF0000';
+			ctx.fillRect(size/2 - 20 * scale, size/2 - 18 * scale, 40 * scale, 5 * scale);
+			
+			// Add mouth
+			ctx.strokeStyle = '#8B4513';
+			ctx.lineWidth = 1 * scale;
+			ctx.beginPath();
+			ctx.arc(size/2, size/2 + 5 * scale, 5 * scale, 0, Math.PI);
+			ctx.stroke();
+			
+			return canvas;
+		};
+
 		const createEnemySprite = (color, size = 64) => {
 			const canvas = document.createElement('canvas');
 			canvas.width = size;
@@ -814,66 +799,17 @@ class PirateBombGame {
 			return canvas;
 		};
 
-		const createPlayerSprite = (color, size = 64) => {
-			const canvas = document.createElement('canvas');
-			canvas.width = size;
-			canvas.height = size;
-			const ctx = canvas.getContext('2d');
-			
-			// Draw player body (rounder shape)
-			ctx.fillStyle = color;
-			ctx.beginPath();
-			ctx.arc(size/2, size/2, size/2 - 4, 0, Math.PI * 2);
-			ctx.fill();
-			
-			// Add darker border
-			ctx.strokeStyle = '#006400';
-			ctx.lineWidth = 3;
-			ctx.stroke();
-			
-			// Add eyes
-			ctx.fillStyle = '#FFFFFF';
-			ctx.beginPath();
-			ctx.arc(size/2 - 12, size/2 - 8, 6, 0, Math.PI * 2);
-			ctx.arc(size/2 + 12, size/2 - 8, 6, 0, Math.PI * 2);
-			ctx.fill();
-			
-			// Add pupils
-			ctx.fillStyle = '#000000';
-			ctx.beginPath();
-			ctx.arc(size/2 - 12, size/2 - 8, 3, 0, Math.PI * 2);
-			ctx.arc(size/2 + 12, size/2 - 8, 3, 0, Math.PI * 2);
-			ctx.fill();
-			
-			// Add friendly eyebrows
-			ctx.strokeStyle = '#006400';
-			ctx.lineWidth = 2;
-			ctx.beginPath();
-			ctx.moveTo(size/2 - 18, size/2 - 16);
-			ctx.lineTo(size/2 - 6, size/2 - 14);
-			ctx.moveTo(size/2 + 6, size/2 - 14);
-			ctx.lineTo(size/2 + 18, size/2 - 16);
-			ctx.stroke();
-			
-			// Add smile
-			ctx.strokeStyle = '#006400';
-			ctx.lineWidth = 2;
-			ctx.beginPath();
-			ctx.arc(size/2, size/2 + 4, 6, 0, Math.PI);
-			ctx.stroke();
-			
-			// Add pirate hat
-			ctx.fillStyle = '#8B4513';
-			ctx.beginPath();
-			ctx.ellipse(size/2, size/2 - 20, 20, 8, 0, 0, Math.PI * 2);
-			ctx.fill();
-			
-			// Add hat border
-			ctx.strokeStyle = '#654321';
-			ctx.lineWidth = 2;
-			ctx.stroke();
-			
-			return canvas;
+		// Try to load a direct image from source as a last resort
+		const tryDirectImageLoad = async (path) => {
+			return new Promise((resolve) => {
+				const img = new Image();
+				img.onload = () => resolve(img);
+				img.onerror = () => resolve(null);
+				img.src = path;
+				
+				// Timeout after 2 seconds
+				setTimeout(() => resolve(null), 2000);
+			});
 		};
 
 		// Ensure player sprites exist
@@ -881,8 +817,8 @@ class PirateBombGame {
 			this.assets.player = {};
 		}
 		
-		// FIX: Only create fallback sprites if real sprites are missing
-		const playerSprites = ['1-Idle', '2-Run', '4-Jump', '5-Fall', '7-Hit', '8-Dead Hit', '9-Dead Ground'];
+		// Check which player animations need fallbacks
+		const playerSprites = ['1-Idle', '2-Run', '4-Jump', '5-Fall'];
 		let needFallbacks = false;
 		
 		playerSprites.forEach(anim => {
@@ -894,132 +830,44 @@ class PirateBombGame {
 			}
 		});
 		
-		// Only create fallbacks if needed
+		// Last-ditch effort: try to directly load first frame from source
 		if (needFallbacks) {
-			console.warn('Creating improved pirate character fallbacks because some animations are missing');
-			playerSprites.forEach(anim => {
-				if (!this.assets.player[anim] || this.assets.player[anim].length === 0) {
-					this.assets.player[anim] = [createPlayerSprite('#228B22', 64)]; // Pirate green for player
-				}
-			});
-		} else {
-			console.log('All player sprites loaded successfully, no fallbacks needed');
-		}
-		
-		console.log('Final player assets check:', Object.keys(this.assets.player).map(key => `${key}: ${this.assets.player[key].length} frames`));
-
-		// Ensure enemy sprites exist
-		if (!this.assets.enemies) {
-			this.assets.enemies = {};
-		}
-		if (!this.assets.enemies['Bald Pirate']) {
-			this.assets.enemies['Bald Pirate'] = {};
-		}
-		
-		// Create fallback enemy sprites with better designs
-		const enemySprites = ['1-Idle', '2-Run', '4-Jump', '5-Fall', '7-Attack', '8-Hit', '9-Hit', '10-Dead Hit', '11-Dead Ground', '12-Hit', '13-Dead Hit', '14-Dead Ground'];
-		enemySprites.forEach(anim => {
-			if (!this.assets.enemies['Bald Pirate'][anim] || this.assets.enemies['Bald Pirate'][anim].length === 0) {
-				this.assets.enemies['Bald Pirate'][anim] = [createEnemySprite('#FF0000', 64)]; // Red for enemies
-			}
-		});
-
-		// Add other enemy types with different colors and designs
-		const otherEnemies = ['Cucumber', 'Big Guy', 'Captain', 'Whale'];
-		otherEnemies.forEach(enemyName => {
-			if (!this.assets.enemies[enemyName]) {
-				this.assets.enemies[enemyName] = {};
-			}
-			enemySprites.forEach(anim => {
-				if (!this.assets.enemies[enemyName][anim] || this.assets.enemies[enemyName][anim].length === 0) {
-					let color = '#FF0000';
-					let size = 64;
-					switch(enemyName) {
-						case 'Cucumber': 
-							color = '#32CD32'; 
-							size = 56; // Smaller
-							break;
-						case 'Big Guy': 
-							color = '#8B4513'; 
-							size = 72; // Bigger
-							break;
-						case 'Captain': 
-							color = '#4169E1'; 
-							size = 64;
-							break;
-						case 'Whale': 
-							color = '#4682B4'; 
-							size = 80; // Biggest
-							break;
+			console.log('🏴‍☠️ Attempting DIRECT LOAD of player sprite from source as last resort');
+			
+			// Try to load the first idle frame directly
+			const img = new Image();
+			img.src = 'Sprites/1-Player-Bomb Guy/1-Idle/1.png';
+			
+			// Force a refresh of the image (prevents caching issues)
+			img.src = img.src + '?t=' + new Date().getTime();
+			
+			// If it loads, use it for all missing animations
+			img.onload = () => {
+				console.log('✅ Direct image load successful!');
+				playerSprites.forEach(anim => {
+					if (!this.assets.player[anim] || this.assets.player[anim].length === 0) {
+						this.assets.player[anim] = [img];
 					}
-					this.assets.enemies[enemyName][anim] = [createEnemySprite(color, size)];
-				}
-			});
-		});
-
-		// Ensure object sprites exist
-		if (!this.assets.objects) {
-			this.assets.objects = {};
+				});
+			};
+			
+			// If direct load fails, use the fallback
+			img.onerror = () => {
+				console.warn('❌ Direct image load failed, using fallback pirate');
+				const fallbackSprite = createPlayerSprite('#F5D0A9', 64); // Pirate skin tone
+				
+				playerSprites.forEach(anim => {
+					if (!this.assets.player[anim] || this.assets.player[anim].length === 0) {
+						this.assets.player[anim] = [fallbackSprite];
+					}
+				});
+			};
 		}
 		
-		// Create fallback bomb sprites
-		if (!this.assets.objects['1-BOMB']) {
-			this.assets.objects['1-BOMB'] = {};
-		}
-		if (!this.assets.objects['1-BOMB']['1-Bomb Off'] || this.assets.objects['1-BOMB']['1-Bomb Off'].length === 0) {
-			this.assets.objects['1-BOMB']['1-Bomb Off'] = [createBombSprite(64)]; // Better bomb design
-		}
+		console.log('Final player assets check:', 
+			Object.keys(this.assets.player).map(key => `${key}: ${this.assets.player[key].length} frames`).join(', '));
+	}
 
-		// Create fallback door sprites
-		if (!this.assets.objects['2-Door']) {
-			this.assets.objects['2-Door'] = {};
-		}
-		if (!this.assets.objects['2-Door']['1-Closed'] || this.assets.objects['2-Door']['1-Closed'].length === 0) {
-			this.assets.objects['2-Door']['1-Closed'] = [createDoorSprite(64)]; // Better door design
-		}
-
-		// Create fallback tile sprites
-		if (!this.assets.objects['tiles']) {
-			this.assets.objects['tiles'] = {};
-		}
-		if (!this.assets.objects['tiles']['1'] || this.assets.objects['tiles']['1'].length === 0) {
-			this.assets.objects['tiles']['1'] = [createFallbackSprite('#8B4513', 64)]; // Brown for tiles
-		}
-
-		// Add missing sprite creation functions
-		const createBombSprite = (size = 64) => {
-			const canvas = document.createElement('canvas');
-			canvas.width = size;
-			canvas.height = size;
-			const ctx = canvas.getContext('2d');
-			
-			// Scale factor
-			const scale = size / 64;
-			
-			// Draw bomb body (black circle)
-			ctx.fillStyle = '#000000';
-			ctx.beginPath();
-			ctx.arc(size/2, size/2, size/2 - 8 * scale, 0, Math.PI * 2);
-			ctx.fill();
-			
-			// Add bomb highlight
-			ctx.fillStyle = '#333333';
-			ctx.beginPath();
-			ctx.arc(size/2 - 8 * scale, size/2 - 8 * scale, size/4, 0, Math.PI * 2);
-			ctx.fill();
-			
-			// Add fuse
-			ctx.strokeStyle = '#8B4513';
-			ctx.lineWidth = 4 * scale;
-			ctx.beginPath();
-			ctx.moveTo(size/2, size/2 - size/2 + 8 * scale);
-			ctx.quadraticCurveTo(size/2 + 10 * scale, size/2 - size/2 - 5 * scale, size/2 + 15 * scale, size/2 - size/2 + 5 * scale);
-			ctx.stroke();
-			
-			// Add fuse tip
-			ctx.fillStyle = '#FF4500';
-			ctx.beginPath();
-			ctx.arc(size/2 + 15 * scale, size/2 - size/2 + 5 * scale, 4 * scale, 0, Math.PI * 2);
 			ctx.fill();
 			
 			// Add some sparkle effect
@@ -3839,48 +3687,85 @@ class Player {
 
 	// Render pirate character fallback instead of red box
 	renderPirateFallback(ctx) {
-		// Draw pirate body (green circle)
-		ctx.fillStyle = '#228B22';
-		ctx.beginPath();
-		ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2 - 4, 0, Math.PI * 2);
-		ctx.fill();
+		// Try to load real sprite directly as fallback with better error handling
+		const img = new Image();
+		const spritePath = 'Sprites/1-Player-Bomb Guy/1-Idle/1.png';
+		
+		// Add timestamp to prevent caching issues
+		img.src = spritePath + '?t=' + new Date().getTime();
+		
+		// Set up error handling
+		img.onerror = () => {
+			console.warn('❌ Failed to load real player sprite, using drawn fallback');
+			// Draw pirate body (pirate skin tone)
+			ctx.fillStyle = '#F5D0A9'; // Pirate skin tone instead of green
+			ctx.beginPath();
+			ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2 - 4, 0, Math.PI * 2);
+			ctx.fill();
 
-		// Add darker border
-		ctx.strokeStyle = '#006400';
-		ctx.lineWidth = 3;
-		ctx.stroke();
+			// Add darker border
+			ctx.strokeStyle = '#8B4513';
+			ctx.lineWidth = 2;
+			ctx.stroke();
 
-		// Add eyes
-		ctx.fillStyle = '#FFFFFF';
-		ctx.beginPath();
-		ctx.arc(this.x + this.width/2 - 12, this.y + this.height/2 - 8, 6, 0, Math.PI * 2);
-		ctx.arc(this.x + this.width/2 + 12, this.y + this.height/2 - 8, 6, 0, Math.PI * 2);
-		ctx.fill();
+			// Add eyes
+			ctx.fillStyle = '#FFFFFF';
+			ctx.beginPath();
+			ctx.arc(this.x + this.width/2 - 10, this.y + this.height/2 - 8, 5, 0, Math.PI * 2);
+			ctx.arc(this.x + this.width/2 + 10, this.y + this.height/2 - 8, 5, 0, Math.PI * 2);
+			ctx.fill();
 
-		// Add pupils
-		ctx.fillStyle = '#000000';
-		ctx.beginPath();
-		ctx.arc(this.x + this.width/2 - 12, this.y + this.height/2 - 8, 3, 0, Math.PI * 2);
-		ctx.arc(this.x + this.width/2 + 12, this.y + this.height/2 - 8, 3, 0, Math.PI * 2);
-		ctx.fill();
+			// Add pupils
+			ctx.fillStyle = '#000000';
+			ctx.beginPath();
+			ctx.arc(this.x + this.width/2 - 10, this.y + this.height/2 - 8, 2, 0, Math.PI * 2);
+			ctx.arc(this.x + this.width/2 + 10, this.y + this.height/2 - 8, 2, 0, Math.PI * 2);
+			ctx.fill();
 
-		// Add pirate hat
-		ctx.fillStyle = '#8B4513';
-		ctx.beginPath();
-		ctx.ellipse(this.x + this.width/2, this.y + this.height/2 - 20, 20, 8, 0, 0, Math.PI * 2);
-		ctx.fill();
+			// Add beard
+			ctx.fillStyle = '#8B4513';
+			ctx.beginPath();
+			ctx.arc(this.x + this.width/2, this.y + this.height/2 + 10, 12, 0, Math.PI);
+			ctx.fill();
 
-		// Add hat border
-		ctx.strokeStyle = '#654321';
-		ctx.lineWidth = 2;
-		ctx.stroke();
+			// Add pirate hat
+			ctx.fillStyle = '#000000';
+			ctx.beginPath();
+			ctx.ellipse(this.x + this.width/2, this.y + this.height/2 - 15, 25, 10, 0, 0, Math.PI * 2);
+			ctx.fill();
 
-		// Add smile
-		ctx.strokeStyle = '#006400';
-		ctx.lineWidth = 2;
-		ctx.beginPath();
-		ctx.arc(this.x + this.width/2, this.y + this.height/2 + 4, 6, 0, Math.PI);
-		ctx.stroke();
+			// Add hat band
+			ctx.fillStyle = '#FF0000';
+			ctx.fillRect(this.x + this.width/2 - 20, this.y + this.height/2 - 18, 40, 5);
+
+			// Add mouth
+			ctx.strokeStyle = '#8B4513';
+			ctx.lineWidth = 1;
+			ctx.beginPath();
+			ctx.arc(this.x + this.width/2, this.y + this.height/2 + 5, 5, 0, Math.PI);
+			ctx.stroke();
+		};
+
+		// If image loads successfully, use it
+		img.onload = () => {
+			if (img.complete && img.naturalWidth > 0) {
+				ctx.save();
+				// Draw the real sprite if it loaded successfully
+				ctx.drawImage(img, this.x, this.y, this.width, this.height);
+				ctx.restore();
+			} else {
+				// Fallback to drawn character if image is not valid
+				img.onerror();
+			}
+		};
+
+		// Add a timeout to ensure we don't wait too long for the image
+		setTimeout(() => {
+			if (!img.complete) {
+				// If image hasn't loaded after 1 second, use the drawn fallback
+				img.onerror();
+			}
+		}, 1000);
 	}
 }
 
