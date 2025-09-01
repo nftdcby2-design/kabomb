@@ -775,7 +775,7 @@ class PirateBombGame {
 			ctx.arc(size/2, size/2 + 8 * scale, 8 * scale, 0, Math.PI);
 			ctx.stroke();
 			
-			// Add some details based on enemy type
+			// Add type-specific details
 			if (color === '#32CD32') { // Cucumber - add green details
 				ctx.fillStyle = '#228B22';
 				ctx.beginPath();
@@ -5880,3 +5880,7 @@ window.startGame = async function() {
 		alert('Error: Game initialization failed. Please refresh the page. Error: ' + error.message);
 	}
 };
+
+// Make PirateBombGame globally available
+window.PirateBombGame = PirateBombGame;
+console.log('✅ PirateBombGame class exported to global scope');

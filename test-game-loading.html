@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Loading Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .test-section {
+            background: #16213e;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4fc3f7;
+        }
+        .success { border-left-color: #4caf50; }
+        .error { border-left-color: #f44336; }
+        .warning { border-left-color: #ff9800; }
+        .log {
+            background: #0f0f23;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button {
+            background: #4fc3f7;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #29b6f6;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 Game Loading Test</h1>
+    
+    <div class="test-section">
+        <h3>📋 Test Results</h3>
+        <div id="testResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>📝 Console Log</h3>
+        <div id="consoleLog" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🔧 Actions</h3>
+        <button onclick="runTests()">Run All Tests</button>
+        <button onclick="clearLog()">Clear Log</button>
+        <button onclick="testGameLoad()">Test Game Load</button>
+        <button onclick="checkScripts()">Check Scripts</button>
+    </div>
+
+    <script>
+        let logOutput = '';
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logOutput += logEntry;
+            
+            const logElement = document.getElementById('consoleLog');
+            if (logElement) {
+                logElement.textContent = logOutput;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logOutput = '';
+            document.getElementById('consoleLog').textContent = '';
+        }
+        
+        function addTestResult(test, status, message) {
+            const resultsDiv = document.getElementById('testResults');
+            const testDiv = document.createElement('div');
+            testDiv.className = `test-section ${status}`;
+            testDiv.innerHTML = `
+                <strong>${test}:</strong> ${status.toUpperCase()}<br>
+                <small>${message}</small>
+            `;
+            resultsDiv.appendChild(testDiv);
+        }
+        
+        function checkScripts() {
+            log('🔍 Checking script availability...');
+            
+            const scripts = [
+                'game.js',
+                'web3/wallet-connection.js',
+                'web3/reward-system.js',
+                'web3/player-registry-client.js',
+                'web3/player-data-manager.js',
+                'web3/recharge-manager.js'
+            ];
+            
+            scripts.forEach(script => {
+                const scriptElement = document.querySelector(`script[src="${script}"]`);
+                if (scriptElement) {
+                    log(`✅ ${script} - Found in DOM`);
+                } else {
+                    log(`❌ ${script} - Not found in DOM`);
+                }
+            });
+            
+            // Check global objects
+            const globalObjects = [
+                'PirateBombGame',
+                'WalletConnection',
+                'RewardSystem',
+                'PlayerRegistryClient',
+                'PlayerDataManager',
+                'RechargeManager',
+                'solanaWeb3'
+            ];
+            
+            globalObjects.forEach(obj => {
+                if (typeof window[obj] !== 'undefined') {
+                    log(`✅ ${obj} - Available globally`);
+                } else {
+                    log(`❌ ${obj} - Not available globally`);
+                }
+            });
+        }
+        
+        function testGameLoad() {
+            log('🎮 Testing game load...');
+            
+            try {
+                if (typeof PirateBombGame !== 'undefined') {
+                    log('✅ PirateBombGame class found');
+                    
+                    // Try to create a game instance
+                    const game = new PirateBombGame();
+                    log('✅ Game instance created successfully');
+                    
+                    if (typeof game.boot === 'function') {
+                        log('✅ Game boot method available');
+                        game.boot();
+                        log('✅ Game booted successfully');
+                    } else {
+                        log('❌ Game boot method not available');
+                    }
+                } else {
+                    log('❌ PirateBombGame class not found');
+                }
+            } catch (error) {
+                log(`❌ Game load test failed: ${error.message}`);
+            }
+        }
+        
+        function runTests() {
+            log('🚀 Running all tests...');
+            
+            // Clear previous results
+            document.getElementById('testResults').innerHTML = '';
+            
+            // Test 1: Check if game.js is loaded
+            if (typeof PirateBombGame !== 'undefined') {
+                addTestResult('Game Class', 'success', 'PirateBombGame class is available');
+            } else {
+                addTestResult('Game Class', 'error', 'PirateBombGame class not found');
+            }
+            
+            // Test 2: Check Web3 components
+            const web3Components = ['WalletConnection', 'RewardSystem', 'PlayerRegistryClient'];
+            let web3Available = true;
+            web3Components.forEach(comp => {
+                if (typeof window[comp] === 'undefined') {
+                    web3Available = false;
+                }
+            });
+            
+            if (web3Available) {
+                addTestResult('Web3 Components', 'success', 'All Web3 components available');
+            } else {
+                addTestResult('Web3 Components', 'warning', 'Some Web3 components missing');
+            }
+            
+            // Test 3: Check Solana Web3
+            if (typeof solanaWeb3 !== 'undefined') {
+                addTestResult('Solana Web3', 'success', 'Solana Web3.js loaded');
+            } else {
+                addTestResult('Solana Web3', 'error', 'Solana Web3.js not loaded');
+            }
+            
+            // Test 4: Check canvas
+            const canvas = document.getElementById('gameCanvas');
+            if (canvas) {
+                addTestResult('Game Canvas', 'success', 'Canvas element found');
+            } else {
+                addTestResult('Game Canvas', 'error', 'Canvas element not found');
+            }
+            
+            // Test 5: Try to create game instance
+            try {
+                if (typeof PirateBombGame !== 'undefined') {
+                    const game = new PirateBombGame();
+                    addTestResult('Game Instance', 'success', 'Game instance created successfully');
+                } else {
+                    addTestResult('Game Instance', 'error', 'Cannot create game instance - class not available');
+                }
+            } catch (error) {
+                addTestResult('Game Instance', 'error', `Failed to create game instance: ${error.message}`);
+            }
+            
+            log('✅ All tests completed');
+        }
+        
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            log('📄 Page loaded, running initial checks...');
+            setTimeout(runTests, 1000);
+        });
+    </script>
+    
+    <!-- Load the actual game scripts -->
+    <script src="game.js"></script>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="web3/wallet-connection.js"></script>
+    <script src="web3/reward-system.js"></script>
+    <script src="web3/player-registry-client.js"></script>
+    <script src="web3/player-data-manager.js"></script>
+    <script src="web3/recharge-manager.js"></script>
+    
+    <!-- Game canvas for testing -->
+    <canvas id="gameCanvas" width="800" height="600" style="border: 1px solid #4fc3f7; margin: 20px 0;"></canvas>
+</body>
+</html>

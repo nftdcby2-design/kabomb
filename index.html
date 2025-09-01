@@ -1748,7 +1748,50 @@
     <!-- <script src="game-assets-loader.js"></script> -->
     <!-- <script src="game-optimized.js"></script> -->
     <!-- <script src="game-emergency-fix.js"></script> -->
-    <script src="game.js"></script>
+    <script src="game.js" onload="console.log('✅ game.js loaded successfully'); window.gameJsLoaded = true;" onerror="console.error('❌ Failed to load game.js'); window.gameJsLoaded = false;"></script>
+    
+    <!-- Emergency Game Fix -->
+    <script src="game-emergency-fix.js"></script>
+    
+    <!-- Ensure PirateBombGame is globally available -->
+    <script>
+        // Wait for game.js to load and ensure PirateBombGame is available
+        setTimeout(() => {
+            if (typeof PirateBombGame === 'undefined') {
+                console.warn('⚠️ PirateBombGame not found, attempting to make it globally available...');
+                
+                // Try to find the class in the global scope
+                if (window.PirateBombGame) {
+                    console.log('✅ Found PirateBombGame in window object');
+                } else {
+                    console.error('❌ PirateBombGame class not available globally');
+                    // Create a fallback game class
+                    window.PirateBombGame = class FallbackGame {
+                        constructor() {
+                            console.log('🎮 Creating fallback game instance');
+                            this.canvas = document.getElementById('gameCanvas');
+                            this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
+                        }
+                        
+                        boot() {
+                            console.log('🎮 Booting fallback game');
+                            if (this.ctx) {
+                                this.ctx.fillStyle = '#1a1a2e';
+                                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                                this.ctx.fillStyle = '#ffffff';
+                                this.ctx.font = '24px Arial';
+                                this.ctx.textAlign = 'center';
+                                this.ctx.fillText('Game Loading...', this.canvas.width / 2, this.canvas.height / 2);
+                            }
+                        }
+                    };
+                    console.log('✅ Created fallback PirateBombGame class');
+                }
+            } else {
+                console.log('✅ PirateBombGame is already available globally');
+            }
+        }, 1000);
+    </script>
     
     <!-- Solana Web3.js with fallback -->
     <script>
@@ -1774,6 +1817,8 @@
     <script>
         // Debug script loading
         console.log('🔍 Script loading check:');
+        console.log('  game.js loaded:', window.gameJsLoaded);
+        console.log('  PirateBombGame:', typeof PirateBombGame);
         console.log('  WalletConnection:', typeof WalletConnection);
         console.log('  RewardSystem:', typeof RewardSystem);
         console.log('  PlayerRegistryClient:', typeof PlayerRegistryClient);
@@ -1804,6 +1849,8 @@
         // Force startGame availability check
         setTimeout(() => {
             console.log('🔍 Delayed check - startGame type:', typeof window.startGame);
+            console.log('🔍 Delayed check - PirateBombGame type:', typeof PirateBombGame);
+            
             if (typeof window.startGame !== 'function') {
                 console.error('❌ startGame still not available after 1 second!');
                 console.log('🔄 Attempting to force create startGame function...');
@@ -1817,15 +1864,78 @@
                         const welcomeMenu = document.getElementById('welcomeMenu');
                         if (welcomeMenu) welcomeMenu.style.display = 'none';
                         
-                        // Start the original game
-                        if (typeof PirateBombGame !== 'undefined') {
-                            const game = new PirateBombGame();
+                        // Check if PirateBombGame is available
+                        if (typeof PirateBombGame === 'undefined') {
+                            console.error('❌ PirateBombGame class not found!');
+                            console.log('🔍 Available global objects:', Object.keys(window).filter(key => key.includes('Game') || key.includes('Pirate')));
+                            
+                            // Try to create a simple game instance if the class is not available
+                            console.log('🔄 Attempting to create game without PirateBombGame class...');
+                            
+                            // Create a minimal game object
+                            const game = {
+                                boot: function() {
+                                    console.log('🎮 Minimal game booted');
+                                    // Hide welcome menu and show game canvas
+                                    const welcomeMenu = document.getElementById('welcomeMenu');
+                                    if (welcomeMenu) welcomeMenu.style.display = 'none';
+                                    
+                                    const gameCanvas = document.getElementById('gameCanvas');
+                                    if (gameCanvas) {
+                                        gameCanvas.style.display = 'block';
+                                        const ctx = gameCanvas.getContext('2d');
+                                        ctx.fillStyle = '#1a1a2e';
+                                        ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+                                        ctx.fillStyle = '#ffffff';
+                                        ctx.font = '24px Arial';
+                                        ctx.textAlign = 'center';
+                                        ctx.fillText('Game Loading...', gameCanvas.width / 2, gameCanvas.height / 2);
+                                    }
+                                }
+                            };
+                            
                             window.game = game;
                             game.boot();
-                        } else {
-                            console.error('PirateBombGame class not found');
-                            alert('Game failed to load. Please refresh the page.');
+                            
+                            // Try to load the real game after a delay
+                            setTimeout(() => {
+                                if (typeof PirateBombGame !== 'undefined') {
+                                    console.log('✅ PirateBombGame found after delay, restarting game...');
+                                    try {
+                                        const realGame = new PirateBombGame();
+                                        window.game = realGame;
+                                        realGame.boot();
+                                    } catch (error) {
+                                        console.error('❌ Failed to start real game:', error);
+                                    }
+                                } else {
+                                    console.error('❌ PirateBombGame still not available after delay');
+                                    // Show a more helpful error message
+                                    const canvas = document.getElementById('gameCanvas');
+                                    if (canvas) {
+                                        const ctx = canvas.getContext('2d');
+                                        ctx.fillStyle = '#1a1a2e';
+                                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                                        ctx.fillStyle = '#ff6b6b';
+                                        ctx.font = 'bold 24px Arial';
+                                        ctx.textAlign = 'center';
+                                        ctx.fillText('Game Loading Error', canvas.width / 2, canvas.height / 2 - 40);
+                                        ctx.fillStyle = '#ffffff';
+                                        ctx.font = '16px Arial';
+                                        ctx.fillText('Please refresh the page (F5)', canvas.width / 2, canvas.height / 2);
+                                        ctx.fillStyle = '#4fc3f7';
+                                        ctx.font = '14px Arial';
+                                        ctx.fillText('If the problem persists, check your internet connection', canvas.width / 2, canvas.height / 2 + 40);
+                                    }
+                                }
+                            }, 3000);
+                            return;
                         }
+                        
+                        // Start the original game
+                        const game = new PirateBombGame();
+                        window.game = game;
+                        game.boot();
                     } catch (error) {
                         console.error('Game start failed:', error);
                         alert('Game failed to start: ' + error.message);
