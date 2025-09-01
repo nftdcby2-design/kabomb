@@ -1765,9 +1765,16 @@
                 'Sprites/1-Player-Bomb Guy/5-Fall/1.png'
             ];
             
-            // Preload images with fetch
+            // Preload images with fetch, properly encoding paths with spaces
             criticalAssets.forEach(asset => {
-                fetch(asset)
+                // Encode paths with spaces
+                let encodedAsset = asset;
+                if (asset.includes(' ')) {
+                    const parts = asset.split('/');
+                    encodedAsset = parts.map(part => encodeURIComponent(part)).join('/');
+                }
+                
+                fetch(encodedAsset)
                     .then(response => response.blob())
                     .then(() => console.log(`✅ Pre-cached: ${asset}`))
                     .catch(error => console.warn(`⚠️ Failed to pre-cache: ${asset}`, error));

@@ -122,6 +122,14 @@ class GameAssetsLoader {
      * Create image loading promise with proper error handling
      */
     createImagePromise(src) {
+        // Properly encode the path if it contains spaces or special characters
+        let encodedSrc = src;
+        if (src.includes(' ') || src.includes('(') || src.includes(')')) {
+            // Split the path and encode each part separately
+            const parts = src.split('/');
+            encodedSrc = parts.map(part => encodeURIComponent(part)).join('/');
+        }
+        
         return new Promise((resolve, reject) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -131,14 +139,14 @@ class GameAssetsLoader {
                 if (img.complete && img.naturalWidth > 0) {
                     resolve(img);
                 } else {
-                    reject(new Error(`Invalid image: ${src}`));
+                    reject(new Error(`Invalid image: ${encodedSrc}`));
                 }
             };
             
-            img.onerror = () => reject(new Error(`Failed to load: ${src}`));
+            img.onerror = () => reject(new Error(`Failed to load: ${encodedSrc}`));
             
             // Set src after setting up handlers
-            img.src = src;
+            img.src = encodedSrc;
         });
     }
 

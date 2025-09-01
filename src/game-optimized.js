@@ -29,25 +29,33 @@ class OptimizedAssetLoader {
 
 	// Enhanced image loader with retry and caching
 	loadImage(src) {
-		if (this.loadingPromises.has(src)) {
-			return this.loadingPromises.get(src);
+		// Properly encode the path if it contains spaces or special characters
+		let encodedSrc = src;
+		if (src.includes(' ') || src.includes('(') || src.includes(')')) {
+			// Split the path and encode each part separately
+			const parts = src.split('/');
+			encodedSrc = parts.map(part => encodeURIComponent(part)).join('/');
+		}
+		
+		if (this.loadingPromises.has(encodedSrc)) {
+			return this.loadingPromises.get(encodedSrc);
 		}
 		
 		const promise = new Promise((resolve, reject) => {
 			const img = new Image();
 			img.crossOrigin = 'anonymous';
 			img.onload = () => {
-				this.loadedAssets.add(src);
+				this.loadedAssets.add(encodedSrc);
 				resolve(img);
 			};
 			img.onerror = () => {
-				console.warn(`⚠️ Failed to load: ${src}`);
-				reject(new Error(`Failed to load image: ${src}`));
+				console.warn(`⚠️ Failed to load: ${encodedSrc}`);
+				reject(new Error(`Failed to load image: ${encodedSrc}`));
 			};
-			img.src = src;
+			img.src = encodedSrc;
 		});
 		
-		this.loadingPromises.set(src, promise);
+		this.loadingPromises.set(encodedSrc, promise);
 		return promise;
 	}
 
@@ -58,7 +66,9 @@ class OptimizedAssetLoader {
 		
 		// Create all load promises
 		for (let i = 1; i <= frameCount; i += 1) {
-			const src = encodeURI(`${folderPath}/${i}.png`);
+			// Use encodeURIComponent for proper encoding of special characters including spaces
+			const encodedPath = folderPath.split('/').map(part => encodeURIComponent(part)).join('/');
+			const src = `${encodedPath}/${i}.png`;
 			loadPromises.push(this.loadImage(src));
 		}
 		

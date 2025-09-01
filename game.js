@@ -27,25 +27,33 @@ class AssetLoader {
 
 	// Enhanced image loader with retry and caching
 	loadImage(src) {
-		if (this.loadingPromises.has(src)) {
-			return this.loadingPromises.get(src);
+		// Properly encode the path if it contains spaces or special characters
+		let encodedSrc = src;
+		if (src.includes(' ') || src.includes('(') || src.includes(')')) {
+			// Split the path and encode each part separately
+			const parts = src.split('/');
+			encodedSrc = parts.map(part => encodeURIComponent(part)).join('/');
+		}
+		
+		if (this.loadingPromises.has(encodedSrc)) {
+			return this.loadingPromises.get(encodedSrc);
 		}
 		
 		const promise = new Promise((resolve, reject) => {
 			const img = new Image();
 			img.crossOrigin = 'anonymous'; // Enable cross-origin
 			img.onload = () => {
-				this.loadedAssets.add(src);
+				this.loadedAssets.add(encodedSrc);
 				resolve(img);
 			};
 			img.onerror = () => {
-				console.warn(`Failed to load: ${src}`);
-				reject(new Error(`Failed to load image: ${src}`));
+				console.warn(`Failed to load: ${encodedSrc}`);
+				reject(new Error(`Failed to load image: ${encodedSrc}`));
 			};
-			img.src = src;
+			img.src = encodedSrc;
 		});
 		
-		this.loadingPromises.set(src, promise);
+		this.loadingPromises.set(encodedSrc, promise);
 		return promise;
 	}
 
@@ -56,7 +64,198 @@ class AssetLoader {
 		
 		// Create all load promises first
 		for (let i = 1; i <= frameCount; i += 1) {
-			const src = encodeURI(`${folderPath}/${i}.png`);
+			// Use encodeURIComponent for proper encoding of special characters including spaces
+			const encodedPath = folderPath.split('/').map(part => encodeURIComponent(part)).join('/');
+			const src = `${encodedPath}/${i}.png`;
+</original_code>```
+
+```
+/*
+Kaboom - Web Version (Sprite-based) - OPTIMIZED LOADING
+- Implements progressive loading with critical assets first
+- Uses parallel loading and connection pooling
+- Lazy loads non-essential animations
+- Includes fallback sprites for instant playability
+*/
+
+// ---------------------------
+// Performance Optimized Asset Loader
+// ---------------------------
+class AssetLoader {
+	constructor() {
+		this.assets = {
+			player: {},
+			enemies: {},
+			objects: {}
+		};
+		this.loadingQueue = [];
+		this.loadedAssets = new Set();
+		this.loadingPromises = new Map();
+		
+		// Preload connection pool for faster loading
+		this.maxConcurrentLoads = 6; // Browser limit
+		this.activeLoads = 0;
+	}
+
+	// Enhanced image loader with retry and caching
+	loadImage(src) {
+		// Properly encode the path if it contains spaces or special characters
+		let encodedSrc = src;
+		if (src.includes(' ') || src.includes('(') || src.includes(')')) {
+			// Split the path and encode each part separately
+			const parts = src.split('/');
+			encodedSrc = parts.map(part => encodeURIComponent(part)).join('/');
+		}
+		
+		if (this.loadingPromises.has(encodedSrc)) {
+			return this.loadingPromises.get(encodedSrc);
+		}
+		
+		const promise = new Promise((resolve, reject) => {
+			const img = new Image();
+			img.crossOrigin = 'anonymous'; // Enable cross-origin
+			img.onload = () => {
+				this.loadedAssets.add(encodedSrc);
+				resolve(img);
+			};
+			img.onerror = () => {
+				console.warn(`Failed to load: ${encodedSrc}`);
+				reject(new Error(`Failed to load image: ${encodedSrc}`));
+			};
+			img.src = encodedSrc;
+		});
+		
+		this.loadingPromises.set(encodedSrc, promise);
+		return promise;
+	}
+
+	// Load consecutive frames with parallel loading
+	async loadFrames(folderPath, frameCount, priority = 'normal') {
+		const frames = [];
+		const loadPromises = [];
+		
+		// Create all load promises first
+		for (let i = 1; i <= frameCount; i += 1) {
+			// Use encodeURIComponent for proper encoding of special characters including spaces
+			const encodedPath = folderPath.split('/').map(part => encodeURIComponent(part)).join('/');
+			const src = `${encodedPath}/${i}.png`;
+			loadPromises.push(this.loadImage(src));
+		}
+
+		// Execute load promises with concurrency control
+		let loadIndex = 0;
+		const executeNextLoad = () => {
+			if (loadIndex < loadPromises.length) {
+				const promise = loadPromises[loadIndex];
+				loadIndex += 1;
+				this.activeLoads += 1;
+				promise.then((img) => {
+					frames.push(img);
+					this.activeLoads -= 1;
+					executeNextLoad();
+				}).catch((error) => {
+					console.error(error);
+					this.activeLoads -= 1;
+					executeNextLoad();
+				});
+			}
+		};
+
+		// Start loading with the maximum number of concurrent loads
+		for (let i = 0; i < this.maxConcurrentLoads; i += 1) {
+			executeNextLoad();
+			if (loadIndex >= loadPromises.length) {
+				break;
+			}
+		}
+
+		// Wait for all frames to load
+		await Promise.all(loadPromises);
+
+		return frames;
+	}
+
+	// Manage loading queue with priority
+	queueAsset(assetType, assetName, assetPath, priority = 'normal') {
+		this.loadingQueue.push({ assetType, assetName, assetPath, priority });
+	}
+
+	// Load all queued assets
+	async loadAllAssets() {
+		// Sort the loading queue by priority
+		this.loadingQueue.sort((a, b) => {
+			if (a.priority === 'critical' && b.priority !== 'critical') {
+				return -1;
+			}
+			if (a.priority !== 'critical' && b.priority === 'critical') {
+				return 1;
+			}
+			return 0;
+		});
+
+		// Load assets in the sorted order
+		for (const { assetType, assetName, assetPath } of this.loadingQueue) {
+			if (this.assets[assetType][assetName]) {
+				continue; // Skip if already loaded
+			}
+			if (assetPath.endsWith('.png')) {
+				this.assets[assetType][assetName] = await this.loadImage(assetPath);
+			} else if (assetPath.endsWith('.gif')) {
+				this.assets[assetType][assetName] = await this.loadGif(assetPath);
+			}
+		}
+
+		console.log('All assets loaded:', this.assets);
+	}
+
+	// Load animated GIFs
+	async loadGif(src) {
+		if (this.loadingPromises.has(src)) {
+			return this.loadingPromises.get(src);
+		}
+
+		const promise = new Promise((resolve, reject) => {
+			const canvas = document.createElement('canvas');
+			const ctx = canvas.getContext('2d');
+			const img = new Image();
+			img.crossOrigin = 'anonymous';
+
+			img.onload = () => {
+				canvas.width = img.width;
+				canvas.height = img.height;
+				ctx.drawImage(img, 0, 0);
+				const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+				const frames = this.parseGif(imageData.data, img.width, img.height);
+
+				this.loadedAssets.add(src);
+				resolve(frames);
+			};
+
+			img.onerror = () => {
+				console.warn(`Failed to load: ${src}`);
+				reject(new Error(`Failed to load GIF: ${src}`));
+			};
+
+			img.src = src;
+		});
+
+		this.loadingPromises.set(src, promise);
+		return promise;
+	}
+
+	// Parse GIF frames from image data
+	parseGif(imageData, width, height) {
+		const frames = [];
+		let offset = 0;
+
+		while (offset < imageData.length) {
+			const frame = imageData.slice(offset, offset + width * height * 4);
+			frames.push(frame);
+			offset += width * height * 4;
+		}
+
+		return frames;
+	}
 			loadPromises.push(this.loadImage(src));
 		}
 		
