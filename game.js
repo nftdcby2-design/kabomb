@@ -256,6 +256,17 @@ class AssetLoader {
 
 		return frames;
 	}
+
+	// Load consecutive frames with parallel loading
+	async loadFrames(folderPath, frameCount, priority = 'normal') {
+		const frames = [];
+		const loadPromises = [];
+		
+		// Create all load promises first
+		for (let i = 1; i <= frameCount; i += 1) {
+			// Use encodeURIComponent for proper encoding of special characters including spaces
+			const encodedPath = folderPath.split('/').map(part => encodeURIComponent(part)).join('/');
+			const src = `${encodedPath}/${i}.png`;
 			loadPromises.push(this.loadImage(src));
 		}
 		
@@ -454,8 +465,14 @@ class AssetLoader {
 					for (const anim of essentialEnemyAnims) {
 						if (enemiesManifest[enemyName][anim]) {
 							try {
+								// Properly encode paths with spaces
+								const basePath = enemiesManifest[enemyName].base;
+								const encodedBasePath = basePath.split('/').map(part => encodeURIComponent(part)).join('/');
+								const encodedAnim = encodeURIComponent(anim);
+								const fullPath = `${encodedBasePath}/${encodedAnim}`;
+								
 								const frames = await Promise.race([
-									this.loadFrames(`${enemiesManifest[enemyName].base}/${anim}`, enemiesManifest[enemyName][anim]),
+									this.loadFrames(fullPath, enemiesManifest[enemyName][anim]),
 									new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
 								]);
 				this.assets.enemies[enemyName][anim] = frames;
@@ -476,8 +493,14 @@ class AssetLoader {
 			const bombAnims = ['1-Bomb Off', '2-Bomb On', '3-Explotion'];
 			for (const anim of bombAnims) {
 				try {
+					// Properly encode paths with spaces
+					const basePath = 'Sprites/7-Objects/1-BOMB';
+					const encodedBasePath = basePath.split('/').map(part => encodeURIComponent(part)).join('/');
+					const encodedAnim = encodeURIComponent(anim);
+					const fullPath = `${encodedBasePath}/${encodedAnim}`;
+					
 					const bombFrames = await Promise.race([
-						this.loadFrames(`Sprites/7-Objects/1-BOMB/${anim}`, this.getObjectsManifest().bomb[anim]),
+						this.loadFrames(fullPath, this.getObjectsManifest().bomb[anim]),
 						new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
 					]);
 					this.assets.objects['1-BOMB'][anim] = bombFrames;
@@ -494,8 +517,14 @@ class AssetLoader {
 			const doorAnims = ['1-Closed', '2-Opening', '3-Closing'];
 			for (const anim of doorAnims) {
 				try {
+					// Properly encode paths with spaces
+					const basePath = 'Sprites/7-Objects/2-Door';
+					const encodedBasePath = basePath.split('/').map(part => encodeURIComponent(part)).join('/');
+					const encodedAnim = encodeURIComponent(anim);
+					const fullPath = `${encodedBasePath}/${encodedAnim}`;
+					
 					const doorFrames = await Promise.race([
-						this.loadFrames(`Sprites/7-Objects/2-Door/${anim}`, this.getObjectsManifest().door[anim]),
+						this.loadFrames(fullPath, this.getObjectsManifest().door[anim]),
 						new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
 					]);
 					this.assets.objects['2-Door'][anim] = doorFrames;
@@ -505,7 +534,7 @@ class AssetLoader {
 					this.assets.objects['2-Door'][anim] = [];
 				}
 			addProgress(totalSteps);
-		}
+			}
 
 			// Load tile sprites - using blocks.png, block2.png, and block3.png for different levels
 		this.assets.objects['tiles'] = {};
