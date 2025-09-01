@@ -164,7 +164,7 @@ class SimpleAssetLoader {
 // ---------------------------
 // Simplified Game Core
 // ---------------------------
-class SimplePirateBombGame {
+class PirateBombGame {
     constructor() {
         console.log('🎮 Initializing Simplified Pirate Bomb Game...');
         
@@ -433,7 +433,7 @@ class SimplePirateBombGame {
 }
 
 // Make the game class globally available
-window.SimplePirateBombGame = SimplePirateBombGame;
+window.PirateBombGame = PirateBombGame;
 
 // Create simplified startGame function
 window.startSimpleGame = async function() {
@@ -453,8 +453,8 @@ window.startSimpleGame = async function() {
         }
         
         // Create and boot game
-        const game = new SimplePirateBombGame();
-        window.simpleGame = game;
+        const game = new PirateBombGame();
+        window.game = game;
         await game.boot();
         
         console.log('✅ Simplified game started successfully!');
