@@ -896,10 +896,10 @@ class PirateBombGame {
 		
 		// Only create fallbacks if needed
 		if (needFallbacks) {
-			console.warn('Creating fallback sprites because some animations are missing');
+			console.warn('Creating improved pirate character fallbacks because some animations are missing');
 			playerSprites.forEach(anim => {
 				if (!this.assets.player[anim] || this.assets.player[anim].length === 0) {
-					this.assets.player[anim] = [createPlayerSprite('#00FF00', 64)]; // Green for player
+					this.assets.player[anim] = [createPlayerSprite('#228B22', 64)]; // Pirate green for player
 				}
 			});
 		} else {
@@ -3709,13 +3709,8 @@ class Player {
 		
 		if (frames.length === 0) { 
 			console.warn(`No frames for animation: ${this.anim.name}. Available sprites:`, Object.keys(this.sprites));
-			// Draw a visible player fallback
-			ctx.fillStyle = '#ff0000'; // Red for player
-			ctx.fillRect(this.x, this.y, this.width, this.height);
-			// Add player label
-			ctx.fillStyle = '#ffffff';
-			ctx.font = '12px Arial';
-			ctx.fillText('PLAYER', this.x, this.y - 5);
+			// Draw a pirate character fallback instead of red box
+			this.renderPirateFallback(ctx);
 			return; 
 		}
 		
@@ -3724,13 +3719,8 @@ class Player {
 		// Debug: Check if img is valid
 		if (!img) {
 			console.warn(`Missing sprite frame for ${this.anim.name} frame ${this.anim.frame}/${frames.length-1}`);
-			// Draw a visible player fallback
-			ctx.fillStyle = '#ff0000'; // Red for player
-			ctx.fillRect(this.x, this.y, this.width, this.height);
-			// Add player label
-			ctx.fillStyle = '#ffffff';
-			ctx.font = '12px Arial';
-			ctx.fillText('PLAYER', this.x, this.y - 5);
+			// Draw a pirate character fallback instead of red box
+			this.renderPirateFallback(ctx);
 			return;
 		}
 		
@@ -3742,16 +3732,11 @@ class Player {
 				naturalHeight: img.naturalHeight,
 				src: img.src
 			});
-			// Draw a visible player fallback
-			ctx.fillStyle = '#ff0000'; // Red for player
-			ctx.fillRect(this.x, this.y, this.width, this.height);
-			// Add player label
-			ctx.fillStyle = '#ffffff';
-			ctx.font = '12px Arial';
-			ctx.fillText('PLAYER', this.x, this.y - 5);
+			// Draw a pirate character fallback instead of red box
+			this.renderPirateFallback(ctx);
 			return;
 		}
-		
+
 		ctx.save();
 		try {
 			// Ensure proper pixel art rendering
@@ -3850,6 +3835,52 @@ class Player {
 			
 			ctx.restore();
 		}
+	}
+
+	// Render pirate character fallback instead of red box
+	renderPirateFallback(ctx) {
+		// Draw pirate body (green circle)
+		ctx.fillStyle = '#228B22';
+		ctx.beginPath();
+		ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2 - 4, 0, Math.PI * 2);
+		ctx.fill();
+
+		// Add darker border
+		ctx.strokeStyle = '#006400';
+		ctx.lineWidth = 3;
+		ctx.stroke();
+
+		// Add eyes
+		ctx.fillStyle = '#FFFFFF';
+		ctx.beginPath();
+		ctx.arc(this.x + this.width/2 - 12, this.y + this.height/2 - 8, 6, 0, Math.PI * 2);
+		ctx.arc(this.x + this.width/2 + 12, this.y + this.height/2 - 8, 6, 0, Math.PI * 2);
+		ctx.fill();
+
+		// Add pupils
+		ctx.fillStyle = '#000000';
+		ctx.beginPath();
+		ctx.arc(this.x + this.width/2 - 12, this.y + this.height/2 - 8, 3, 0, Math.PI * 2);
+		ctx.arc(this.x + this.width/2 + 12, this.y + this.height/2 - 8, 3, 0, Math.PI * 2);
+		ctx.fill();
+
+		// Add pirate hat
+		ctx.fillStyle = '#8B4513';
+		ctx.beginPath();
+		ctx.ellipse(this.x + this.width/2, this.y + this.height/2 - 20, 20, 8, 0, 0, Math.PI * 2);
+		ctx.fill();
+
+		// Add hat border
+		ctx.strokeStyle = '#654321';
+		ctx.lineWidth = 2;
+		ctx.stroke();
+
+		// Add smile
+		ctx.strokeStyle = '#006400';
+		ctx.lineWidth = 2;
+		ctx.beginPath();
+		ctx.arc(this.x + this.width/2, this.y + this.height/2 + 4, 6, 0, Math.PI);
+		ctx.stroke();
 	}
 }
 
