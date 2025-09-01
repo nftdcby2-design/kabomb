@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Simplified Game</title>
+</head>
+<body>
+    <h1>Test Simplified Game</h1>
+    <p>Testing if simplified game loads correctly...</p>
+    
+    <script src="game-simple.js"></script>
+    <script>
+        // Test if the simplified game class is available
+        console.log('Testing simplified game...');
+        console.log('SimplePirateBombGame:', typeof SimplePirateBombGame);
+        console.log('startSimpleGame:', typeof window.startSimpleGame);
+        
+        if (typeof SimplePirateBombGame !== 'undefined') {
+            console.log('✅ SimplePirateBombGame class is available');
+        } else {
+            console.error('❌ SimplePirateBombGame class is NOT available');
+        }
+        
+        if (typeof window.startSimpleGame !== 'undefined') {
+            console.log('✅ startSimpleGame function is available');
+        } else {
+            console.error('❌ startSimpleGame function is NOT available');
+        }
+    </script>
+</body>
+</html>
