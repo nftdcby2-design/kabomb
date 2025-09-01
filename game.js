@@ -230,43 +230,43 @@ class AssetLoader {
 		}
 
 		// Load bomb animations
-			this.assets.objects = {};
+		this.assets.objects = {};
 		this.assets.objects['1-BOMB'] = {};
-			const bombAnims = ['1-Bomb Off', '2-Bomb On', '3-Explotion'];
-			for (const anim of bombAnims) {
-				try {
-					const bombFrames = await Promise.race([
-						this.loadFrames(`Sprites/7-Objects/1-BOMB/${anim}`, this.getObjectsManifest().bomb[anim]),
-						new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-					]);
-					this.assets.objects['1-BOMB'][anim] = bombFrames;
-					console.log(`Loaded bomb ${anim}: ${bombFrames.length} frames`);
-				} catch (error) {
-					console.warn(`Failed to load bomb animation ${anim}:`, error);
-					this.assets.objects['1-BOMB'][anim] = [];
-				}
+		const bombAnims = ['1-Bomb Off', '2-Bomb On', '3-Explotion'];
+		for (const anim of bombAnims) {
+			try {
+				const bombFrames = await Promise.race([
+					this.loadFrames(`Sprites/7-Objects/1-BOMB/${anim}`, this.getObjectsManifest().bomb[anim]),
+					new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+				]);
+				this.assets.objects['1-BOMB'][anim] = bombFrames;
+				console.log(`Loaded bomb ${anim}: ${bombFrames.length} frames`);
+			} catch (error) {
+				console.warn(`Failed to load bomb animation ${anim}:`, error);
+				this.assets.objects['1-BOMB'][anim] = [];
+			}
 			addProgress(totalSteps);
 		}
 
 		// Load door animations
 		this.assets.objects['2-Door'] = {};
-			const doorAnims = ['1-Closed', '2-Opening', '3-Closing'];
-			for (const anim of doorAnims) {
-				try {
-					const doorFrames = await Promise.race([
-						this.loadFrames(`Sprites/7-Objects/2-Door/${anim}`, this.getObjectsManifest().door[anim]),
-						new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-					]);
-					this.assets.objects['2-Door'][anim] = doorFrames;
-					console.log(`Loaded door ${anim}: ${doorFrames.length} frames`);
-				} catch (error) {
-					console.warn(`Failed to load door animation ${anim}:`, error);
-					this.assets.objects['2-Door'][anim] = [];
-				}
+		const doorAnims = ['1-Closed', '2-Opening', '3-Closing'];
+		for (const anim of doorAnims) {
+			try {
+				const doorFrames = await Promise.race([
+					this.loadFrames(`Sprites/7-Objects/2-Door/${anim}`, this.getObjectsManifest().door[anim]),
+					new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+				]);
+				this.assets.objects['2-Door'][anim] = doorFrames;
+				console.log(`Loaded door ${anim}: ${doorFrames.length} frames`);
+			} catch (error) {
+				console.warn(`Failed to load door animation ${anim}:`, error);
+				this.assets.objects['2-Door'][anim] = [];
+			}
 			addProgress(totalSteps);
 		}
 
-			// Load tile sprites - using blocks.png, block2.png, and block3.png for different levels
+		// Load tile sprites - using blocks.png, block2.png, and block3.png for different levels
 		this.assets.objects['tiles'] = {};
 		
 		// Load background images for different levels
