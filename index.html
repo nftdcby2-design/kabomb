@@ -2198,105 +2198,366 @@
                     startButton.onclick = async () => {
                         console.log('🎮 Start button clicked!');
                         
-                        // Development mode - allow playing without wallet
-                        if (!window.walletConnection || !window.walletConnection.isConnected) {
-                            console.warn('⚠️ Wallet not connected, starting game in development mode');
-                            if (typeof window.startGame === 'function') {
-                                window.startGame();
-                                return;
-                            }
-                        }
-                        
-                        // Check if RechargeManager is available and player can play
-                        if (window.rechargeManager) {
-                            const canPlay = window.rechargeManager.canPlay();
+                        try {
+                            // Add timeout protection
+                            const startTimeout = setTimeout(() => {
+                                console.error('❌ Start button handler timeout - took longer than 30 seconds');
+                                
+                                // Hide loading screen
+                                const loadingScreen = document.getElementById('loadingScreen');
+                                if (loadingScreen) {
+                                    loadingScreen.style.display = 'none';
+                                }
+                                
+                                // Show error message
+                                const loadingText = document.getElementById('loadingText');
+                                if (loadingText) {
+                                    loadingText.textContent = 'Error: Game start timeout. Please try again.';
+                                }
+                                
+                                // Show welcome menu again
+                                const welcomeMenu = document.getElementById('welcomeMenu');
+                                if (welcomeMenu) {
+                                    welcomeMenu.style.display = 'block';
+                                }
+                                
+                                alert('Game start is taking too long. Please try again.');
+                            }, 30000); // 30 second timeout
                             
-                            if (!canPlay) {
-                                // Don't show popup - just return silently
-                                // The recharge bar will show the countdown automatically
-                                console.log('🔋 Player cannot play - recharge bar will show countdown');
-                                return;
+                            // Hide welcome menu immediately
+                            const welcomeMenu = document.getElementById('welcomeMenu');
+                            if (welcomeMenu) {
+                                welcomeMenu.style.display = 'none';
                             }
                             
-                            // Player can play - start the game
-                            console.log('✅ Player can play - starting game');
-                            if (typeof window.startGame === 'function') {
-                                try {
-                                    window.startGame();
-                                } catch (error) {
-                                    console.error('❌ Error calling startGame:', error);
-                                    alert('Error: Game failed to start. Error: ' + error.message);
+                            // Show loading screen
+                            const loadingScreen = document.getElementById('loadingScreen');
+                            if (loadingScreen) {
+                                loadingScreen.style.display = 'flex';
+                            }
+                            
+                            // Update loading text
+                            const loadingText = document.getElementById('loadingText');
+                            if (loadingText) {
+                                loadingText.textContent = '⚡ Initializing game...';
+                            }
+                            
+                            // Development mode - allow playing without wallet
+                            if (!window.walletConnection || !window.walletConnection.isConnected) {
+                                console.warn('⚠️ Wallet not connected, starting game in development mode');
+                                if (typeof window.startGame === 'function') {
+                                    try {
+                                        await window.startGame();
+                                        clearTimeout(startTimeout); // Clear timeout on success
+                                    } catch (error) {
+                                        console.error('❌ Error calling startGame:', error);
+                                        clearTimeout(startTimeout); // Clear timeout on error
+                                        // Show loading screen error
+                                        if (loadingText) {
+                                            loadingText.textContent = `Error: ${error.message}`;
+                                        }
+                                        alert('Error: Game failed to start. Error: ' + error.message);
+                                        
+                                        // Show welcome menu again
+                                        if (welcomeMenu) {
+                                            welcomeMenu.style.display = 'block';
+                                        }
+                                    }
+                                    return;
+                                }
+                            }
+                            
+                            // Check if RechargeManager is available and player can play
+                            if (window.rechargeManager) {
+                                const canPlay = window.rechargeManager.canPlay();
+                                
+                                if (!canPlay) {
+                                    // Don't show popup - just return silently
+                                    // The recharge bar will show the countdown automatically
+                                    console.log('🔋 Player cannot play - recharge bar will show countdown');
+                                    
+                                    // Hide loading screen since we're not starting
+                                    if (loadingScreen) {
+                                        loadingScreen.style.display = 'none';
+                                    }
+                                    
+                                    // Show welcome menu again
+                                    if (welcomeMenu) {
+                                        welcomeMenu.style.display = 'block';
+                                    }
+                                    
+                                    clearTimeout(startTimeout); // Clear timeout
+                                    return;
+                                }
+                                
+                                // Player can play - start the game
+                                console.log('✅ Player can play - starting game');
+                                if (typeof window.startGame === 'function') {
+                                    try {
+                                        await window.startGame();
+                                        clearTimeout(startTimeout); // Clear timeout on success
+                                    } catch (error) {
+                                        console.error('❌ Error calling startGame:', error);
+                                        clearTimeout(startTimeout); // Clear timeout on error
+                                        // Show loading screen error
+                                        if (loadingText) {
+                                            loadingText.textContent = `Error: ${error.message}`;
+                                        }
+                                        alert('Error: Game failed to start. Error: ' + error.message);
+                                        
+                                        // Show welcome menu again
+                                        if (welcomeMenu) {
+                                            welcomeMenu.style.display = 'block';
+                                        }
+                                    }
+                                } else {
+                                    console.error('❌ startGame function not found!');
+                                    console.log('🔍 Available window functions:', Object.keys(window).filter(key => typeof window[key] === 'function' && key.includes('start')));
+                                    
+                                    clearTimeout(startTimeout); // Clear timeout
+                                    
+                                    // Show loading screen error
+                                    if (loadingText) {
+                                        loadingText.textContent = 'Error: Game initialization failed. Please refresh the page.';
+                                    }
+                                    
+                                    alert('Error: Game initialization failed. Please refresh the page.');
+                                    
+                                    // Show welcome menu again
+                                    if (welcomeMenu) {
+                                        welcomeMenu.style.display = 'block';
+                                    }
                                 }
                             } else {
-                                console.error('❌ startGame function not found!');
-                                console.log('🔍 Available window functions:', Object.keys(window).filter(key => typeof window[key] === 'function' && key.includes('start')));
-                                alert('Error: Game initialization failed. Please refresh the page.');
-                            }
-                        } else {
-                            // Try to initialize RechargeManager if not available
-                            console.log('🔋 RechargeManager not available - attempting to initialize...');
-                            if (typeof RechargeManager !== 'undefined' && window.walletConnection && window.walletConnection.publicKey) {
-                                const walletAddress = window.walletConnection.publicKey.toString();
-                                window.rechargeManager = new RechargeManager();
-                                
-                                try {
-                                    const rechargeInit = await window.rechargeManager.initialize(walletAddress);
-                                    if (rechargeInit) {
-                                        console.log('✅ RechargeManager initialized on start button click');
-                                        window.rechargeManager.updateUI();
+                                // Try to initialize RechargeManager if not available
+                                console.log('🔋 RechargeManager not available - attempting to initialize...');
+                                if (typeof RechargeManager !== 'undefined' && window.walletConnection && window.walletConnection.publicKey) {
+                                    const walletAddress = window.walletConnection.publicKey.toString();
+                                    window.rechargeManager = new RechargeManager();
+                                    
+                                    try {
+                                        const rechargeInit = await window.rechargeManager.initialize(walletAddress);
+                                        if (rechargeInit) {
+                                            console.log('✅ RechargeManager initialized on start button click');
+                                            window.rechargeManager.updateUI();
+                                            
+                                            // Now check if player can play
+                                            const canPlay = window.rechargeManager.canPlay();
+                                            if (!canPlay) {
+                                                // Don't show popup - just return silently
+                                                // The recharge bar will show the countdown automatically
+                                                console.log('🔋 Player cannot play - recharge bar will show countdown');
+                                                
+                                                // Hide loading screen since we're not starting
+                                                if (loadingScreen) {
+                                                    loadingScreen.style.display = 'none';
+                                                }
+                                                
+                                                // Show welcome menu again
+                                                if (welcomeMenu) {
+                                                    welcomeMenu.style.display = 'block';
+                                                }
+                                                
+                                                clearTimeout(startTimeout); // Clear timeout
+                                                return;
+                                            }
+                                            
+                                            // Player can play - start the game
+                                            console.log('✅ Player can play - starting game');
+                                            if (typeof window.startGame === 'function') {
+                                                try {
+                                                    await window.startGame();
+                                                    clearTimeout(startTimeout); // Clear timeout on success
+                                                } catch (error) {
+                                                    console.error('❌ Error calling startGame:', error);
+                                                    clearTimeout(startTimeout); // Clear timeout on error
+                                                    // Show loading screen error
+                                                    if (loadingText) {
+                                                        loadingText.textContent = `Error: ${error.message}`;
+                                                    }
+                                                    alert('Error: Game failed to start. Error: ' + error.message);
+                                                    
+                                                    // Show welcome menu again
+                                                    if (welcomeMenu) {
+                                                        welcomeMenu.style.display = 'block';
+                                                    }
+                                                }
+                                            } else {
+                                                console.error('❌ startGame function not found!');
+                                                console.log('🔍 Available window functions:', Object.keys(window).filter(key => typeof window[key] === 'function' && key.includes('start')));
+                                                
+                                                clearTimeout(startTimeout); // Clear timeout
+                                                
+                                                // Show loading screen error
+                                                if (loadingText) {
+                                                    loadingText.textContent = 'Error: Game initialization failed. Please refresh the page.';
+                                                }
+                                                
+                                                alert('Error: Game initialization failed. Please refresh the page.');
+                                                
+                                                // Show welcome menu again
+                                                if (welcomeMenu) {
+                                                    welcomeMenu.style.display = 'block';
+                                                }
+                                            }
+                                        } else {
+                                            console.warn('⚠️ RechargeManager initialization failed - starting game without recharge check');
+                                            
+                                            clearTimeout(startTimeout); // Clear timeout
+                                            
+                                            // Hide loading screen temporarily
+                                            if (loadingScreen) {
+                                                loadingScreen.style.display = 'none';
+                                            }
+                                            
+                                            if (typeof window.startGame === 'function') {
+                                                // Show loading screen again
+                                                if (loadingScreen) {
+                                                    loadingScreen.style.display = 'flex';
+                                                }
+                                                
+                                                try {
+                                                    await window.startGame();
+                                                    clearTimeout(startTimeout); // Clear timeout on success
+                                                } catch (error) {
+                                                    console.error('❌ Error calling startGame:', error);
+                                                    clearTimeout(startTimeout); // Clear timeout on error
+                                                    // Show loading screen error
+                                                    if (loadingText) {
+                                                        loadingText.textContent = `Error: ${error.message}`;
+                                                    }
+                                                    alert('Error: Game failed to start. Error: ' + error.message);
+                                                    
+                                                    // Show welcome menu again
+                                                    if (welcomeMenu) {
+                                                        welcomeMenu.style.display = 'block';
+                                                    }
+                                                }
+                                            } else {
+                                                console.error('❌ startGame function not found!');
+                                                
+                                                // Show loading screen error
+                                                if (loadingText) {
+                                                    loadingText.textContent = 'Error: Game initialization failed. Please refresh the page.';
+                                                }
+                                                
+                                                alert('Error: Game initialization failed. Please refresh the page.');
+                                                
+                                                // Show welcome menu again
+                                                if (welcomeMenu) {
+                                                    welcomeMenu.style.display = 'block';
+                                                }
+                                            }
+                                        }
+                                    } catch (error) {
+                                        console.error('❌ Error initializing RechargeManager:', error);
+                                        clearTimeout(startTimeout); // Clear timeout
                                         
-                                        // Now check if player can play
-                                        const canPlay = window.rechargeManager.canPlay();
-                                        if (!canPlay) {
-                                            // Don't show popup - just return silently
-                                            // The recharge bar will show the countdown automatically
-                                            console.log('🔋 Player cannot play - recharge bar will show countdown');
-                                            return;
+                                        // Fallback: start game without recharge check
+                                        
+                                        // Hide loading screen temporarily
+                                        if (loadingScreen) {
+                                            loadingScreen.style.display = 'none';
                                         }
                                         
-                                        // Player can play - start the game
-                                        console.log('✅ Player can play - starting game');
                                         if (typeof window.startGame === 'function') {
+                                            // Show loading screen again
+                                            if (loadingScreen) {
+                                                loadingScreen.style.display = 'flex';
+                                            }
+                                            
                                             try {
-                                                window.startGame();
+                                                await window.startGame();
+                                                clearTimeout(startTimeout); // Clear timeout on success
                                             } catch (error) {
                                                 console.error('❌ Error calling startGame:', error);
+                                                clearTimeout(startTimeout); // Clear timeout on error
+                                                // Show loading screen error
+                                                if (loadingText) {
+                                                    loadingText.textContent = `Error: ${error.message}`;
+                                                }
                                                 alert('Error: Game failed to start. Error: ' + error.message);
+                                                
+                                                // Show welcome menu again
+                                                if (welcomeMenu) {
+                                                    welcomeMenu.style.display = 'block';
+                                                }
                                             }
                                         } else {
                                             console.error('❌ startGame function not found!');
-                                            console.log('🔍 Available window functions:', Object.keys(window).filter(key => typeof window[key] === 'function' && key.includes('start')));
+                                            
+                                            // Show loading screen error
+                                            if (loadingText) {
+                                                loadingText.textContent = 'Error: Game initialization failed. Please refresh the page.';
+                                            }
+                                            
                                             alert('Error: Game initialization failed. Please refresh the page.');
-                                        }
-                                    } else {
-                                        console.warn('⚠️ RechargeManager initialization failed - starting game without recharge check');
-                                        if (typeof window.startGame === 'function') {
-                                            window.startGame();
-                                        } else {
-                                            console.error('❌ startGame function not found!');
-                                            alert('Error: Game initialization failed. Please refresh the page.');
+                                            
+                                            // Show welcome menu again
+                                            if (welcomeMenu) {
+                                                welcomeMenu.style.display = 'block';
+                                            }
                                         }
                                     }
-                                } catch (error) {
-                                    console.error('❌ Error initializing RechargeManager:', error);
-                                    // Fallback: start game without recharge check
+                                } else {
+                                    // Fallback if RechargeManager not available
+                                    console.warn('⚠️ RechargeManager not available - starting game without recharge check');
+                                    
+                                    clearTimeout(startTimeout); // Clear timeout
+                                    
+                                    // Hide loading screen temporarily
+                                    if (loadingScreen) {
+                                        loadingScreen.style.display = 'none';
+                                    }
+                                    
                                     if (typeof window.startGame === 'function') {
-                                        window.startGame();
+                                        // Show loading screen again
+                                        if (loadingScreen) {
+                                            loadingScreen.style.display = 'flex';
+                                        }
+                                        
+                                        try {
+                                            await window.startGame();
+                                            clearTimeout(startTimeout); // Clear timeout on success
+                                        } catch (error) {
+                                            console.error('❌ Error calling startGame:', error);
+                                            clearTimeout(startTimeout); // Clear timeout on error
+                                            // Show loading screen error
+                                            if (loadingText) {
+                                                loadingText.textContent = `Error: ${error.message}`;
+                                            }
+                                            alert('Error: Game failed to start. Error: ' + error.message);
+                                            
+                                            // Show welcome menu again
+                                            if (welcomeMenu) {
+                                                welcomeMenu.style.display = 'block';
+                                            }
+                                        }
                                     } else {
                                         console.error('❌ startGame function not found!');
+                                        
+                                        // Show loading screen error
+                                        if (loadingText) {
+                                            loadingText.textContent = 'Error: Game initialization failed. Please refresh the page.';
+                                        }
+                                        
                                         alert('Error: Game initialization failed. Please refresh the page.');
+                                        
+                                        // Show welcome menu again
+                                        if (welcomeMenu) {
+                                            welcomeMenu.style.display = 'block';
+                                        }
                                     }
                                 }
-                            } else {
-                                // Fallback if RechargeManager not available
-                                console.warn('⚠️ RechargeManager not available - starting game without recharge check');
-                                if (typeof window.startGame === 'function') {
-                                    window.startGame();
-                                } else {
-                                    console.error('❌ startGame function not found!');
-                                    alert('Error: Game initialization failed. Please refresh the page.');
-                                }
                             }
+                        } catch (error) {
+                            console.error('❌ Unexpected error in start button handler:', error);
+                            // Show loading screen error
+                            const loadingText = document.getElementById('loadingText');
+                            if (loadingText) {
+                                loadingText.textContent = `Unexpected error: ${error.message}`;
+                            }
+                            alert('Unexpected error: ' + error.message);
                         }
                     };
                     console.log('✅ Start button click handler attached with recharge system');

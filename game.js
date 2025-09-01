@@ -14,15 +14,17 @@ class AssetLoader {
 		this.assets = {
 			player: {},
 			enemies: {},
-			objects: {}
+			objects: {},
+			backgrounds: {}
 		};
 		this.loadingQueue = [];
 		this.loadedAssets = new Set();
 		this.loadingPromises = new Map();
 		
 		// Preload connection pool for faster loading
-		this.maxConcurrentLoads = 6; // Browser limit
+		this.maxConcurrentLoads = 3; // Reduced for better stability
 		this.activeLoads = 0;
+		this.timeoutDuration = 5000; // 5 second timeout for each asset
 	}
 
 	// Enhanced image loader with retry and caching
@@ -42,14 +44,31 @@ class AssetLoader {
 		const promise = new Promise((resolve, reject) => {
 			const img = new Image();
 			img.crossOrigin = 'anonymous'; // Enable cross-origin
+			
+			// Add timeout protection
+			const timeout = setTimeout(() => {
+				console.warn(`Timeout loading image: ${encodedSrc}`);
+				reject(new Error(`Timeout loading image: ${encodedSrc}`));
+			}, this.timeoutDuration);
+			
 			img.onload = () => {
-				this.loadedAssets.add(encodedSrc);
-				resolve(img);
+				clearTimeout(timeout);
+				// Verify image loaded correctly
+				if (img.complete && img.naturalWidth > 0) {
+					this.loadedAssets.add(encodedSrc);
+					resolve(img);
+				} else {
+					console.warn(`Invalid image loaded: ${encodedSrc}`);
+					reject(new Error(`Invalid image: ${encodedSrc}`));
+				}
 			};
+			
 			img.onerror = () => {
+				clearTimeout(timeout);
 				console.warn(`Failed to load: ${encodedSrc}`);
 				reject(new Error(`Failed to load image: ${encodedSrc}`));
 			};
+			
 			img.src = encodedSrc;
 		});
 		
@@ -57,79 +76,7 @@ class AssetLoader {
 		return promise;
 	}
 
-	// Load consecutive frames with parallel loading
-	async loadFrames(folderPath, frameCount, priority = 'normal') {
-		const frames = [];
-		const loadPromises = [];
-		
-		// Create all load promises first
-		for (let i = 1; i <= frameCount; i += 1) {
-			// Use encodeURIComponent for proper encoding of special characters including spaces
-			const encodedPath = folderPath.split('/').map(part => encodeURIComponent(part)).join('/');
-			const src = `${encodedPath}/${i}.png`;
-</original_code>```
-
-```
-/*
-Kaboom - Web Version (Sprite-based) - OPTIMIZED LOADING
-- Implements progressive loading with critical assets first
-- Uses parallel loading and connection pooling
-- Lazy loads non-essential animations
-- Includes fallback sprites for instant playability
-*/
-
-// ---------------------------
-// Performance Optimized Asset Loader
-// ---------------------------
-class AssetLoader {
-	constructor() {
-		this.assets = {
-			player: {},
-			enemies: {},
-			objects: {}
-		};
-		this.loadingQueue = [];
-		this.loadedAssets = new Set();
-		this.loadingPromises = new Map();
-		
-		// Preload connection pool for faster loading
-		this.maxConcurrentLoads = 6; // Browser limit
-		this.activeLoads = 0;
-	}
-
-	// Enhanced image loader with retry and caching
-	loadImage(src) {
-		// Properly encode the path if it contains spaces or special characters
-		let encodedSrc = src;
-		if (src.includes(' ') || src.includes('(') || src.includes(')')) {
-			// Split the path and encode each part separately
-			const parts = src.split('/');
-			encodedSrc = parts.map(part => encodeURIComponent(part)).join('/');
-		}
-		
-		if (this.loadingPromises.has(encodedSrc)) {
-			return this.loadingPromises.get(encodedSrc);
-		}
-		
-		const promise = new Promise((resolve, reject) => {
-			const img = new Image();
-			img.crossOrigin = 'anonymous'; // Enable cross-origin
-			img.onload = () => {
-				this.loadedAssets.add(encodedSrc);
-				resolve(img);
-			};
-			img.onerror = () => {
-				console.warn(`Failed to load: ${encodedSrc}`);
-				reject(new Error(`Failed to load image: ${encodedSrc}`));
-			};
-			img.src = encodedSrc;
-		});
-		
-		this.loadingPromises.set(encodedSrc, promise);
-		return promise;
-	}
-
-	// Load consecutive frames with parallel loading
+	// Load consecutive frames with parallel loading and timeout protection
 	async loadFrames(folderPath, frameCount, priority = 'normal') {
 		const frames = [];
 		const loadPromises = [];
@@ -142,37 +89,53 @@ class AssetLoader {
 			loadPromises.push(this.loadImage(src));
 		}
 
-		// Execute load promises with concurrency control
+		// Execute load promises with concurrency control and timeout
 		let loadIndex = 0;
 		const executeNextLoad = () => {
 			if (loadIndex < loadPromises.length) {
 				const promise = loadPromises[loadIndex];
 				loadIndex += 1;
 				this.activeLoads += 1;
-				promise.then((img) => {
-					frames.push(img);
-					this.activeLoads -= 1;
-					executeNextLoad();
-				}).catch((error) => {
-					console.error(error);
-					this.activeLoads -= 1;
-					executeNextLoad();
+				
+				// Add timeout wrapper
+				const timeoutPromise = new Promise((_, reject) => {
+					setTimeout(() => reject(new Error('Frame loading timeout')), this.timeoutDuration);
 				});
+				
+				Promise.race([promise, timeoutPromise])
+					.then((img) => {
+						frames.push(img);
+						this.activeLoads -= 1;
+						executeNextLoad();
+					})
+					.catch((error) => {
+						console.error('Frame loading error:', error);
+						// Add a fallback empty frame
+						frames.push(null);
+						this.activeLoads -= 1;
+						executeNextLoad();
+					});
 			}
 		};
 
 		// Start loading with the maximum number of concurrent loads
-		for (let i = 0; i < this.maxConcurrentLoads; i += 1) {
+		const maxLoads = Math.min(this.maxConcurrentLoads, loadPromises.length);
+		for (let i = 0; i < maxLoads; i += 1) {
 			executeNextLoad();
-			if (loadIndex >= loadPromises.length) {
-				break;
-			}
 		}
 
-		// Wait for all frames to load
-		await Promise.all(loadPromises);
+		// Wait for all frames to load with overall timeout
+		try {
+			await Promise.race([
+				Promise.all(loadPromises),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall loading timeout')), this.timeoutDuration * frameCount))
+			]);
+		} catch (error) {
+			console.warn('Frames loading timeout or error:', error);
+		}
 
-		return frames;
+		// Filter out null frames and return valid ones
+		return frames.filter(frame => frame !== null);
 	}
 
 	// Manage loading queue with priority
@@ -180,7 +143,7 @@ class AssetLoader {
 		this.loadingQueue.push({ assetType, assetName, assetPath, priority });
 	}
 
-	// Load all queued assets
+	// Load all queued assets with timeout protection
 	async loadAllAssets() {
 		// Sort the loading queue by priority
 		this.loadingQueue.sort((a, b) => {
@@ -193,19 +156,66 @@ class AssetLoader {
 			return 0;
 		});
 
-		// Load assets in the sorted order
-		for (const { assetType, assetName, assetPath } of this.loadingQueue) {
+		// Load assets in the sorted order with timeout protection
+		const loadPromises = this.loadingQueue.map(async ({ assetType, assetName, assetPath }) => {
 			if (this.assets[assetType][assetName]) {
-				continue; // Skip if already loaded
+				return; // Skip if already loaded
 			}
+			
+			try {
+				// Apply timeout to each asset loading
+				const assetPromise = this.loadAsset(assetType, assetName, assetPath);
+				await Promise.race([
+					assetPromise,
+					new Promise((_, reject) => setTimeout(() => reject(new Error(`Asset loading timeout: ${assetPath}`)), this.timeoutDuration * 2))
+				]);
+			} catch (error) {
+				console.warn(`Failed to load asset ${assetPath}:`, error.message);
+				// Continue with fallback assets
+			}
+		});
+
+		// Apply overall timeout to all assets loading
+		try {
+			await Promise.race([
+				Promise.all(loadPromises),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall asset loading timeout')), this.timeoutDuration * this.loadingQueue.length))
+			]);
+		} catch (error) {
+			console.warn('Overall asset loading timeout:', error.message);
+		}
+
+		console.log('All assets loaded:', this.assets);
+	}
+
+	// Load individual asset with proper error handling
+	async loadAsset(assetType, assetName, assetPath) {
+		try {
 			if (assetPath.endsWith('.png')) {
 				this.assets[assetType][assetName] = await this.loadImage(assetPath);
 			} else if (assetPath.endsWith('.gif')) {
 				this.assets[assetType][assetName] = await this.loadGif(assetPath);
 			}
+		} catch (error) {
+			console.warn(`Error loading asset ${assetPath}:`, error.message);
+			// Create a fallback asset
+			this.assets[assetType][assetName] = this.createFallbackAsset();
 		}
+	}
 
-		console.log('All assets loaded:', this.assets);
+	// Create fallback asset for error handling
+	createFallbackAsset() {
+		// Create a simple colored canvas as fallback
+		const canvas = document.createElement('canvas');
+		canvas.width = 64;
+		canvas.height = 64;
+		const ctx = canvas.getContext('2d');
+		ctx.fillStyle = '#CCCCCC';
+		ctx.fillRect(0, 0, 64, 64);
+		ctx.strokeStyle = '#000000';
+		ctx.lineWidth = 2;
+		ctx.strokeRect(0, 0, 64, 64);
+		return canvas;
 	}
 
 	// Load animated GIFs
@@ -255,42 +265,6 @@ class AssetLoader {
 		}
 
 		return frames;
-	}
-
-	// Load consecutive frames with parallel loading
-	async loadFrames(folderPath, frameCount, priority = 'normal') {
-		const frames = [];
-		const loadPromises = [];
-		
-		// Create all load promises first
-		for (let i = 1; i <= frameCount; i += 1) {
-			// Use encodeURIComponent for proper encoding of special characters including spaces
-			const encodedPath = folderPath.split('/').map(part => encodeURIComponent(part)).join('/');
-			const src = `${encodedPath}/${i}.png`;
-			loadPromises.push(this.loadImage(src));
-		}
-		
-		// Load in batches based on priority
-		const batchSize = priority === 'critical' ? this.maxConcurrentLoads : 3;
-		for (let i = 0; i < loadPromises.length; i += batchSize) {
-			const batch = loadPromises.slice(i, i + batchSize);
-			try {
-				const batchResults = await Promise.allSettled(batch);
-				batchResults.forEach((result, idx) => {
-					if (result.status === 'fulfilled') {
-						frames[i + idx] = result.value;
-					} else {
-						console.warn(`Frame ${i + idx + 1} failed:`, result.reason);
-						frames[i + idx] = null; // Placeholder
-					}
-				});
-			} catch (error) {
-				console.warn(`Batch loading error:`, error);
-			}
-		}
-		
-		// Filter out null frames and return valid ones
-		return frames.filter(frame => frame !== null);
 	}
 
 	// Player manifest
@@ -447,6 +421,58 @@ class AssetLoader {
 			this.createFallbackSprites();
 			return this.assets;
 		}
+	}
+
+	// Create fallback sprites for error handling
+	createFallbackSprites() {
+		console.log('🎨 Creating fallback sprites for error handling...');
+		
+		// Create player fallback sprites
+		this.assets.player = {
+			'1-Idle': [this.createFallbackAsset()],
+			'2-Run': [this.createFallbackAsset()],
+			'4-Jump': [this.createFallbackAsset()],
+			'5-Fall': [this.createFallbackAsset()]
+		};
+		
+		// Create enemy fallback sprites
+		this.assets.enemies = {
+			'Bald Pirate': {
+				'1-Idle': [this.createFallbackAsset()],
+				'2-Run': [this.createFallbackAsset()],
+				'4-Jump': [this.createFallbackAsset()],
+				'5-Fall': [this.createFallbackAsset()],
+				'7-Attack': [this.createFallbackAsset()]
+			}
+		};
+		
+		// Create object fallback sprites
+		this.assets.objects = {
+			'1-BOMB': {
+				'1-Bomb Off': [this.createFallbackAsset()],
+				'2-Bomb On': [this.createFallbackAsset()],
+				'3-Explotion': [this.createFallbackAsset()]
+			},
+			'2-Door': {
+				'1-Closed': [this.createFallbackAsset()],
+				'2-Opening': [this.createFallbackAsset()],
+				'3-Closing': [this.createFallbackAsset()]
+			},
+			'tiles': {
+				'blocks': [this.createFallbackAsset()],
+				'block2': [this.createFallbackAsset()],
+				'block3': [this.createFallbackAsset()]
+			}
+		};
+		
+		// Create background fallback
+		this.assets.backgrounds = {
+			'bgblocks': this.createFallbackAsset(),
+			'bgblock2': this.createFallbackAsset(),
+			'bgblock3': this.createFallbackAsset()
+		};
+		
+		console.log('✅ Fallback sprites created successfully');
 	}
 }
 	}
@@ -835,63 +861,1363 @@ class PirateBombGame {
 		try {
 			console.log('🚀 Starting robust game boot with enhanced error handling...');
 			
-			// Step 1: Load assets using default asset loader
+			// Add timeout protection for the entire boot process
+			const bootTimeout = setTimeout(() => {
+				console.error('❌ Game boot timeout - took longer than 30 seconds');
+				throw new Error('Game boot timeout - took longer than 30 seconds');
+			}, 30000); // 30 second timeout
+			
+			// Step 1: Load assets using default asset loader with timeout protection
 			console.log('Step 1: Loading game assets...');
 			
 			// Use the built-in reliable asset loader
 			const loader = new AssetLoader();
-			this.assets = await loader.loadAll((loaded, total) => {
-				const progress = (loaded / total) * 100;
+```
+
+```
+
+```
+/*
+Kaboom - Web Version (Sprite-based) - OPTIMIZED LOADING
+- Implements progressive loading with critical assets first
+- Uses parallel loading and connection pooling
+- Lazy loads non-essential animations
+- Includes fallback sprites for instant playability
+*/
+
+// ---------------------------
+// Performance Optimized Asset Loader
+// ---------------------------
+class AssetLoader {
+	constructor() {
+		this.assets = {
+			player: {},
+			enemies: {},
+			objects: {},
+			backgrounds: {}
+		};
+		this.loadingQueue = [];
+		this.loadedAssets = new Set();
+		this.loadingPromises = new Map();
+		
+		// Preload connection pool for faster loading
+		this.maxConcurrentLoads = 3; // Reduced for better stability
+		this.activeLoads = 0;
+		this.timeoutDuration = 5000; // 5 second timeout for each asset
+	}
+
+	// Enhanced image loader with retry and caching
+	loadImage(src) {
+		// Properly encode the path if it contains spaces or special characters
+		let encodedSrc = src;
+		if (src.includes(' ') || src.includes('(') || src.includes(')')) {
+			// Split the path and encode each part separately
+			const parts = src.split('/');
+			encodedSrc = parts.map(part => encodeURIComponent(part)).join('/');
+		}
+		
+		if (this.loadingPromises.has(encodedSrc)) {
+			return this.loadingPromises.get(encodedSrc);
+		}
+		
+		const promise = new Promise((resolve, reject) => {
+			const img = new Image();
+			img.crossOrigin = 'anonymous'; // Enable cross-origin
+			
+			// Add timeout protection
+			const timeout = setTimeout(() => {
+				console.warn(`Timeout loading image: ${encodedSrc}`);
+				reject(new Error(`Timeout loading image: ${encodedSrc}`));
+			}, this.timeoutDuration);
+			
+			img.onload = () => {
+				clearTimeout(timeout);
+				// Verify image loaded correctly
+				if (img.complete && img.naturalWidth > 0) {
+					this.loadedAssets.add(encodedSrc);
+					resolve(img);
+				} else {
+					console.warn(`Invalid image loaded: ${encodedSrc}`);
+					reject(new Error(`Invalid image: ${encodedSrc}`));
+				}
+			};
+			
+			img.onerror = () => {
+				clearTimeout(timeout);
+				console.warn(`Failed to load: ${encodedSrc}`);
+				reject(new Error(`Failed to load image: ${encodedSrc}`));
+			};
+			
+			img.src = encodedSrc;
+		});
+		
+		this.loadingPromises.set(encodedSrc, promise);
+		return promise;
+	}
+
+	// Load consecutive frames with parallel loading and timeout protection
+	async loadFrames(folderPath, frameCount, priority = 'normal') {
+		const frames = [];
+		const loadPromises = [];
+		
+		// Create all load promises first
+		for (let i = 1; i <= frameCount; i += 1) {
+			// Use encodeURIComponent for proper encoding of special characters including spaces
+			const encodedPath = folderPath.split('/').map(part => encodeURIComponent(part)).join('/');
+			const src = `${encodedPath}/${i}.png`;
+			loadPromises.push(this.loadImage(src));
+		}
+
+		// Execute load promises with concurrency control and timeout
+		let loadIndex = 0;
+		const executeNextLoad = () => {
+			if (loadIndex < loadPromises.length) {
+				const promise = loadPromises[loadIndex];
+				loadIndex += 1;
+				this.activeLoads += 1;
+				
+				// Add timeout wrapper
+				const timeoutPromise = new Promise((_, reject) => {
+					setTimeout(() => reject(new Error('Frame loading timeout')), this.timeoutDuration);
+				});
+				
+				Promise.race([promise, timeoutPromise])
+					.then((img) => {
+						frames.push(img);
+						this.activeLoads -= 1;
+						executeNextLoad();
+					})
+					.catch((error) => {
+						console.error('Frame loading error:', error);
+						// Add a fallback empty frame
+						frames.push(null);
+						this.activeLoads -= 1;
+						executeNextLoad();
+					});
+			}
+		};
+
+		// Start loading with the maximum number of concurrent loads
+		const maxLoads = Math.min(this.maxConcurrentLoads, loadPromises.length);
+		for (let i = 0; i < maxLoads; i += 1) {
+			executeNextLoad();
+		}
+
+		// Wait for all frames to load with overall timeout
+		try {
+			await Promise.race([
+				Promise.all(loadPromises),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall loading timeout')), this.timeoutDuration * frameCount))
+			]);
+		} catch (error) {
+			console.warn('Frames loading timeout or error:', error);
+		}
+
+		// Filter out null frames and return valid ones
+		return frames.filter(frame => frame !== null);
+	}
+
+	// Manage loading queue with priority
+	queueAsset(assetType, assetName, assetPath, priority = 'normal') {
+		this.loadingQueue.push({ assetType, assetName, assetPath, priority });
+	}
+
+	// Load all queued assets with timeout protection
+	async loadAllAssets() {
+		// Sort the loading queue by priority
+		this.loadingQueue.sort((a, b) => {
+			if (a.priority === 'critical' && b.priority !== 'critical') {
+				return -1;
+			}
+			if (a.priority !== 'critical' && b.priority === 'critical') {
+				return 1;
+			}
+			return 0;
+		});
+
+		// Load assets in the sorted order with timeout protection
+		const loadPromises = this.loadingQueue.map(async ({ assetType, assetName, assetPath }) => {
+			if (this.assets[assetType][assetName]) {
+				return; // Skip if already loaded
+			}
+			
+			try {
+				// Apply timeout to each asset loading
+				const assetPromise = this.loadAsset(assetType, assetName, assetPath);
+				await Promise.race([
+					assetPromise,
+					new Promise((_, reject) => setTimeout(() => reject(new Error(`Asset loading timeout: ${assetPath}`)), this.timeoutDuration * 2))
+				]);
+			} catch (error) {
+				console.warn(`Failed to load asset ${assetPath}:`, error.message);
+				// Continue with fallback assets
+			}
+		});
+
+		// Apply overall timeout to all assets loading
+		try {
+			await Promise.race([
+				Promise.all(loadPromises),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Overall asset loading timeout')), this.timeoutDuration * this.loadingQueue.length))
+			]);
+		} catch (error) {
+			console.warn('Overall asset loading timeout:', error.message);
+		}
+
+		console.log('All assets loaded:', this.assets);
+	}
+
+	// Load individual asset with proper error handling
+	async loadAsset(assetType, assetName, assetPath) {
+		try {
+			if (assetPath.endsWith('.png')) {
+				this.assets[assetType][assetName] = await this.loadImage(assetPath);
+			} else if (assetPath.endsWith('.gif')) {
+				this.assets[assetType][assetName] = await this.loadGif(assetPath);
+			}
+		} catch (error) {
+			console.warn(`Error loading asset ${assetPath}:`, error.message);
+			// Create a fallback asset
+			this.assets[assetType][assetName] = this.createFallbackAsset();
+		}
+	}
+
+	// Create fallback asset for error handling
+	createFallbackAsset() {
+		// Create a simple colored canvas as fallback
+		const canvas = document.createElement('canvas');
+		canvas.width = 64;
+		canvas.height = 64;
+		const ctx = canvas.getContext('2d');
+		ctx.fillStyle = '#CCCCCC';
+		ctx.fillRect(0, 0, 64, 64);
+		ctx.strokeStyle = '#000000';
+		ctx.lineWidth = 2;
+		ctx.strokeRect(0, 0, 64, 64);
+		return canvas;
+	}
+
+	// Load animated GIFs
+	async loadGif(src) {
+		if (this.loadingPromises.has(src)) {
+			return this.loadingPromises.get(src);
+		}
+
+		const promise = new Promise((resolve, reject) => {
+			const canvas = document.createElement('canvas');
+			const ctx = canvas.getContext('2d');
+			const img = new Image();
+			img.crossOrigin = 'anonymous';
+
+			img.onload = () => {
+				canvas.width = img.width;
+				canvas.height = img.height;
+				ctx.drawImage(img, 0, 0);
+				const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+				const frames = this.parseGif(imageData.data, img.width, img.height);
+
+				this.loadedAssets.add(src);
+				resolve(frames);
+			};
+
+			img.onerror = () => {
+				console.warn(`Failed to load: ${src}`);
+				reject(new Error(`Failed to load GIF: ${src}`));
+			};
+
+			img.src = src;
+		});
+
+		this.loadingPromises.set(src, promise);
+		return promise;
+	}
+
+	// Parse GIF frames from image data
+	parseGif(imageData, width, height) {
+		const frames = [];
+		let offset = 0;
+
+		while (offset < imageData.length) {
+			const frame = imageData.slice(offset, offset + width * height * 4);
+			frames.push(frame);
+			offset += width * height * 4;
+		}
+
+		return frames;
+	}
+
+	// Player manifest
+	getPlayerManifest() {
+		const base = 'Sprites/1-Player-Bomb Guy';
+		return {
+			'1-Idle': 26,
+			'2-Run': 14,
+			'3-Jump Anticipation': 1,
+			'4-Jump': 4,
+			'5-Fall': 2,
+			'6-Ground': 3,
+			'7-Hit': 8,
+			'8-Dead Hit': 6,
+			'9-Dead Ground': 4,
+			'10-Door In': 16,
+			'11-Door Out': 16,
+			_base: base
+		};
+	}
+
+	// Enemies manifest (based on scanned counts)
+	getEnemiesManifest() {
+		return {
+			'Bald Pirate': {
+				base: 'Sprites/2-Enemy-Bald Pirate',
+				'1-Idle': 34,
+				'2-Run': 14,
+				'3-Jump Anticipation': 1,
+				'4-Jump': 4,
+				'5-Fall': 2,
+				'6-Ground': 3,
+				'7-Attack': 12,
+				'8-Hit': 8,
+				'9-Dead Hit': 6,
+				'10-Dead Ground': 4
+			},
+			'Cucumber': {
+				base: 'Sprites/3-Enemy-Cucumber',
+				'1-Idle': 36,
+				'2-Run': 12,
+				'3-Jump Anticipation': 1,
+				'4-Jump': 4,
+				'5-Fall': 2,
+				'6-Ground': 3,
+				'7-Attack': 11,
+				'8-Blow the wick': 11,
+				'9-Hit': 8,
+				'10-Dead Hit': 6,
+				'11-Dead Ground': 4
+			},
+			'Big Guy': {
+				base: 'Sprites/4-Enemy-Big Guy',
+				'1-Idle': 38,
+				'2-Run': 16,
+				'3-Jump Anticipation': 1,
+				'4-Jump': 4,
+				'5-Fall': 2,
+				'6-Ground': 3,
+				'7-Attack': 11,
+				'8-Pick (Bomb)': 8,
+				'9-Idle (Bomb)': 1,
+				'10-Run (Bomb)': 16,
+				'11-Throw (Bomb)': 11,
+				'12-Hit': 8,
+				'13-Dead Hit': 6,
+				'14-Dead Ground': 4
+			},
+			'Captain': {
+				base: 'Sprites/5-Enemy-Captain',
+				'1-Idle': 32,
+				'2-Run': 14,
+				'3-Jump Anticipation': 1,
+				'4-Jump': 4,
+				'5-Fall': 2,
+				'6-Ground': 3,
+				'7-Attack': 7,
+				'8-Scare Run': 12,
+				'9-Hit': 8,
+				'10-Dead Hit': 6,
+				'11-Dead Ground': 4
+			},
+			'Whale': {
+				base: 'Sprites/6-Enemy-Whale',
+				'1-Idle': 44,
+				'2-Run': 14,
+				'3-Jump Anticipation': 1,
+				'4-Jump': 4,
+				'5-Fall': 2,
+				'6-Ground': 3,
+				'7-Attack': 11,
+				'8-Swalow (Bomb)': 10,
+				'9-Hit': 7,
+				'10-Dead Hit': 6,
+				'11-Dead Ground': 4
+			}
+		};
+	}
+
+	getObjectsManifest() {
+		return {
+			base: 'Sprites/7-Objects',
+			bomb: {
+				'1-Bomb Off': 1,
+				'2-Bomb On': 10,
+				'3-Explotion': 9,
+				base: 'Sprites/7-Objects/1-BOMB'
+			},
+			door: {
+				'1-Closed': 1,
+				'2-Opening': 5,
+				'3-Closing': 5,
+				base: 'Sprites/7-Objects/2-Door'
+			},
+			tiles: {
+				'1': 1,
+				'2': 1,
+				'3': 1,
+				'4': 1,
+				'5': 1,
+				'6': 1,
+				'7': 1,
+				'8': 1,
+				base: 'Sprites/8-Tile-Sets/Variations'
+			}
+		};
+	}
+
+	// ULTRA-FAST LOADING WITH ADVANCED ASSETS LOADER
+	async loadAll(onProgress) {
+		console.log('🚀 Using Advanced Game Assets Loader for ultra-fast loading...');
+		
+		try {
+			// Use the new advanced assets loader
+			const advancedLoader = new GameAssetsLoader();
+			
+			// Load critical assets first (should take < 5 seconds)
+			const assets = await advancedLoader.loadCriticalAssets((loaded, total) => {
+				// Update loading progress UI
+				if (onProgress) {
+					onProgress(loaded, total);
+				}
+				
+				// Also update the global loading UI
 				try {
 					const loadingFill = document.getElementById('loadingFill');
 					const loadingText = document.getElementById('loadingText');
-					if (loadingFill) loadingFill.style.width = progress + '%';
-					if (loadingText) loadingText.textContent = `⚡ Loading... ${Math.round(progress)}%`;
+					if (loadingFill) {
+						const progress = (loaded / total) * 100;
+						loadingFill.style.width = progress + '%';
+					}
+					if (loadingText) {
+						loadingText.textContent = `⚡ Loading critical assets... ${loaded}/${total}`;
+					}
 				} catch (uiError) {
 					console.warn('⚠️ Loading UI update failed:', uiError);
 				}
 			});
-			console.log('✅ Assets loaded successfully');
 			
-			if (!this.assets) {
-				throw new Error('Assets failed to load completely');
+			// Store the loader for future use
+			this.assetsLoader = advancedLoader;
+			
+			// Copy loaded assets to this instance
+			this.assets = assets;
+			
+			console.log('✅ Advanced loading completed - game ready!');
+			console.log('📊 Loader stats:', advancedLoader.getStats());
+			
+			// Update UI to show 100% completion
+			try {
+				const loadingFill = document.getElementById('loadingFill');
+				const loadingText = document.getElementById('loadingText');
+				if (loadingFill) {
+					loadingFill.style.width = '100%';
+				}
+				if (loadingText) {
+					loadingText.textContent = '✅ Loading complete!';
+				}
+			} catch (uiError) {
+				console.warn('⚠️ Final loading UI update failed:', uiError);
 			}
-
-			// Step 2: Validate and create fallback sprites if needed
-			console.log('Step 2: Validating player assets...');
-			const hasValidPlayerAssets = this.validatePlayerAssets();
-			if (!hasValidPlayerAssets) {
-				console.warn('⚠️ Creating fallback sprites...');
-				this.createFallbackSprites();
-			}
-
-			// Step 3: Initialize game world safely
-			console.log('Step 3: Initializing game world...');
-			this.initializeGameWorld();
-
-			// Step 4: Create player with error handling
-			console.log('Step 4: Creating player...');
-			this.createPlayerSafely();
-
-			// Step 5: Initialize game entities
-			console.log('Step 5: Spawning game entities...');
-			this.initializeGameEntities();
-
-			// Step 6: Start game systems
-			console.log('Step 6: Starting game systems...');
-			this.startGameSystems();
-
-			// Step 7: Initialize Web3 safely (non-blocking)
-			console.log('Step 7: Initializing Web3 systems...');
-			this.initializeWeb3Safely();
-
-			console.log('✅ Game boot completed successfully!');
-
+			
+			return this.assets;
 		} catch (error) {
-			console.error('❌ Critical error during game boot:', error);
-			this.handleBootFailure(error);
+			console.error('❌ Advanced loader failed, using fallbacks:', error);
+			
+			// Update UI to show error
+			try {
+				const loadingText = document.getElementById('loadingText');
+				if (loadingText) {
+					loadingText.textContent = `❌ Loading failed: ${error.message}`;
+				}
+			} catch (uiError) {
+				console.warn('⚠️ Error loading UI update failed:', uiError);
+			}
+			
+			// Create fallback sprites for immediate gameplay
+			this.createFallbackSprites();
+			return this.assets;
 		}
 	}
+
+	// Create fallback sprites for error handling
+	createFallbackSprites() {
+		console.log('🎨 Creating fallback sprites for error handling...');
+		
+		// Create player fallback sprites
+		this.assets.player = {
+			'1-Idle': [this.createFallbackAsset()],
+			'2-Run': [this.createFallbackAsset()],
+			'4-Jump': [this.createFallbackAsset()],
+			'5-Fall': [this.createFallbackAsset()]
+		};
+		
+		// Create enemy fallback sprites
+		this.assets.enemies = {
+			'Bald Pirate': {
+				'1-Idle': [this.createFallbackAsset()],
+				'2-Run': [this.createFallbackAsset()],
+				'4-Jump': [this.createFallbackAsset()],
+				'5-Fall': [this.createFallbackAsset()],
+				'7-Attack': [this.createFallbackAsset()]
+			}
+		};
+		
+		// Create object fallback sprites
+		this.assets.objects = {
+			'1-BOMB': {
+				'1-Bomb Off': [this.createFallbackAsset()],
+				'2-Bomb On': [this.createFallbackAsset()],
+				'3-Explotion': [this.createFallbackAsset()]
+			},
+			'2-Door': {
+				'1-Closed': [this.createFallbackAsset()],
+				'2-Opening': [this.createFallbackAsset()],
+				'3-Closing': [this.createFallbackAsset()]
+			},
+			'tiles': {
+				'blocks': [this.createFallbackAsset()],
+				'block2': [this.createFallbackAsset()],
+				'block3': [this.createFallbackAsset()]
+			}
+		};
+		
+		// Create background fallback
+		this.assets.backgrounds = {
+			'bgblocks': this.createFallbackAsset(),
+			'bgblock2': this.createFallbackAsset(),
+			'bgblock3': this.createFallbackAsset()
+		};
+		
+		console.log('✅ Fallback sprites created successfully');
+	}
+}
+	}
+
+
+			// Load all enemy animations
+			const enemiesManifest = this.getEnemiesManifest();
+			this.assets.enemies = {};
+			
+			// Load all enemy types
+			const enemyTypes = ['Bald Pirate', 'Cucumber', 'Big Guy', 'Captain', 'Whale'];
+			for (const enemyName of enemyTypes) {
+				if (enemiesManifest[enemyName]) {
+			this.assets.enemies[enemyName] = {};
+					const essentialEnemyAnims = ['1-Idle', '2-Run', '4-Jump', '5-Fall', '7-Attack', '8-Hit', '9-Hit', '10-Dead Hit', '11-Dead Ground', '12-Hit', '13-Dead Hit', '14-Dead Ground'];
+					for (const anim of essentialEnemyAnims) {
+						if (enemiesManifest[enemyName][anim]) {
+							try {
+								// Properly encode paths with spaces
+								const basePath = enemiesManifest[enemyName].base;
+								const encodedBasePath = basePath.split('/').map(part => encodeURIComponent(part)).join('/');
+								const encodedAnim = encodeURIComponent(anim);
+								const fullPath = `${encodedBasePath}/${encodedAnim}`;
+								
+								const frames = await Promise.race([
+									this.loadFrames(fullPath, enemiesManifest[enemyName][anim]),
+									new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+								]);
+				this.assets.enemies[enemyName][anim] = frames;
+								console.log(`Loaded ${enemyName} ${anim}: ${frames.length} frames`);
+							} catch (error) {
+								console.warn(`Failed to load enemy animation ${enemyName} ${anim}:`, error);
+								this.assets.enemies[enemyName][anim] = [];
+							}
+						}
+				addProgress(totalSteps);
+					}
+			}
+		}
+
+		// Load bomb animations
+			this.assets.objects = {};
+		this.assets.objects['1-BOMB'] = {};
+			const bombAnims = ['1-Bomb Off', '2-Bomb On', '3-Explotion'];
+			for (const anim of bombAnims) {
+				try {
+					// Properly encode paths with spaces
+					const basePath = 'Sprites/7-Objects/1-BOMB';
+					const encodedBasePath = basePath.split('/').map(part => encodeURIComponent(part)).join('/');
+					const encodedAnim = encodeURIComponent(anim);
+					const fullPath = `${encodedBasePath}/${encodedAnim}`;
+					
+					const bombFrames = await Promise.race([
+						this.loadFrames(fullPath, this.getObjectsManifest().bomb[anim]),
+						new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+					]);
+					this.assets.objects['1-BOMB'][anim] = bombFrames;
+					console.log(`Loaded bomb ${anim}: ${bombFrames.length} frames`);
+				} catch (error) {
+					console.warn(`Failed to load bomb animation ${anim}:`, error);
+					this.assets.objects['1-BOMB'][anim] = [];
+				}
+			addProgress(totalSteps);
+		}
+
+		// Load door animations
+		this.assets.objects['2-Door'] = {};
+			const doorAnims = ['1-Closed', '2-Opening', '3-Closing'];
+			for (const anim of doorAnims) {
+				try {
+					// Properly encode paths with spaces
+					const basePath = 'Sprites/7-Objects/2-Door';
+					const encodedBasePath = basePath.split('/').map(part => encodeURIComponent(part)).join('/');
+					const encodedAnim = encodeURIComponent(anim);
+					const fullPath = `${encodedBasePath}/${encodedAnim}`;
+					
+					const doorFrames = await Promise.race([
+						this.loadFrames(fullPath, this.getObjectsManifest().door[anim]),
+						new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+					]);
+					this.assets.objects['2-Door'][anim] = doorFrames;
+					console.log(`Loaded door ${anim}: ${doorFrames.length} frames`);
+				} catch (error) {
+					console.warn(`Failed to load door animation ${anim}:`, error);
+					this.assets.objects['2-Door'][anim] = [];
+				}
+			addProgress(totalSteps);
+			}
+
+			// Load tile sprites - using blocks.png, block2.png, and block3.png for different levels
+		this.assets.objects['tiles'] = {};
+		
+		// Load background images for different levels
+		this.assets.backgrounds = {};
+		
+		// Load blocks.png (for level 1)
+		try {
+			const blocksImg = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/blocks.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.objects['tiles']['blocks'] = blocksImg ? [blocksImg] : [];
+			console.log('Loaded blocks.png tile set');
+		} catch (error) {
+			console.warn('Failed to load blocks.png:', error);
+			this.assets.objects['tiles']['blocks'] = [];
+		}
+		
+		// Load block2.png (for level 2)
+		try {
+			const block2Img = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/block2.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.objects['tiles']['block2'] = block2Img ? [block2Img] : [];
+			console.log('Loaded block2.png tile set');
+		} catch (error) {
+			console.warn('Failed to load block2.png:', error);
+			this.assets.objects['tiles']['block2'] = [];
+		}
+		
+		// Load block3.png (for level 3+)
+				try {
+			const block3Img = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/block3.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.objects['tiles']['block3'] = block3Img ? [block3Img] : [];
+			console.log('Loaded block3.png tile set');
+		} catch (error) {
+			console.warn('Failed to load block3.png:', error);
+			this.assets.objects['tiles']['block3'] = [];
+		}
+		
+		// Load block4.png (for level 4)
+		try {
+			const block4Img = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/block4.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.objects['tiles']['block4'] = block4Img ? [block4Img] : [];
+			console.log('Loaded block4.png tile set');
+		} catch (error) {
+			console.warn('Failed to load block4.png:', error);
+			this.assets.objects['tiles']['block4'] = [];
+		}
+		
+		// Load block5.png (for level 5)
+		try {
+			const block5Img = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/block5.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.objects['tiles']['block5'] = block5Img ? [block5Img] : [];
+			console.log('Loaded block5.png tile set');
+		} catch (error) {
+			console.warn('Failed to load block5.png:', error);
+			this.assets.objects['tiles']['block5'] = [];
+		}
+		
+		// Load block6.png (for level 6)
+		try {
+			const block6Img = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/block6.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.objects['tiles']['block6'] = block6Img ? [block6Img] : [];
+			console.log('✅ Loaded block6.png tile set for level 6');
+		} catch (error) {
+			console.warn('❌ Failed to load block6.png:', error);
+			this.assets.objects['tiles']['block6'] = [];
+		}
+		
+		// Load background images
+		try {
+			const bgblocksImg = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/bgblocks.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.backgrounds['bgblocks'] = bgblocksImg;
+			console.log('Loaded bgblocks.png background');
+		} catch (error) {
+			console.warn('Failed to load bgblocks.png:', error);
+			this.assets.backgrounds['bgblocks'] = null;
+		}
+		
+		try {
+			const bgblock2Img = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/bgblock2.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.backgrounds['bgblock2'] = bgblock2Img;
+			console.log('Loaded bgblock2.png background');
+		} catch (error) {
+			console.warn('Failed to load bgblock2.png:', error);
+			this.assets.backgrounds['bgblock2'] = null;
+		}
+		
+		try {
+			const bgblock3Img = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/bgblock3.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.backgrounds['bgblock3'] = bgblock3Img;
+			console.log('Loaded bgblock3.png background');
+		} catch (error) {
+			console.warn('Failed to load bgblock3.png:', error);
+			this.assets.backgrounds['bgblock3'] = null;
+		}
+		
+		try {
+			const bgblock4Img = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/bgblock4.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.backgrounds['bgblock4'] = bgblock4Img;
+			console.log('Loaded bgblock4.png background');
+		} catch (error) {
+			console.warn('Failed to load bgblock4.png:', error);
+			this.assets.backgrounds['bgblock4'] = null;
+		}
+		
+		try {
+			const bgblock5Img = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/bgblock5.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.backgrounds['bgblock5'] = bgblock5Img;
+			console.log('Loaded bgblock5.png background');
+		} catch (error) {
+			console.warn('Failed to load bgblock5.png:', error);
+			this.assets.backgrounds['bgblock5'] = null;
+		}
+		
+		try {
+			const bgblock6Img = await Promise.race([
+				this.loadImage('Sprites/8-Tile-Sets/bgblock6.png'),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+			]);
+			this.assets.backgrounds['bgblock6'] = bgblock6Img;
+			console.log('✅ Loaded bgblock6.png background for level 6');
+		} catch (error) {
+			console.warn('❌ Failed to load bgblock6.png:', error);
+			this.assets.backgrounds['bgblock6'] = null;
+		}
+		
+		addProgress(totalSteps);
+
+		// Load shield image for potions
+		try {
+			console.log('Loading shield image for potions...');
+			this.assets.shield = await this.loadImage('Sprites/emojis/shield.png');
+			console.log('Shield image loaded successfully');
+		} catch (error) {
+			console.warn('Failed to load shield image:', error);
+			this.assets.shield = null;
+		}
+		addProgress(totalSteps);
+
+		} catch (error) {
+			console.error('Error during asset loading:', error);
+		}
+
+		// Force 100% at the end
+		if (onProgress) onProgress(totalSteps, totalSteps);
+		return this.assets;
+	}
+}
+
+// ---------------------------
+// Game Core
+// ---------------------------
+class PirateBombGame {
+	constructor() {
+		this.canvas = document.getElementById('gameCanvas');
+		if (!this.canvas) {
+			console.error('Canvas element not found! Make sure the HTML has <canvas id="gameCanvas">');
+			throw new Error('Canvas element not found! Make sure the HTML has <canvas id="gameCanvas">');
+		}
+		this.ctx = this.canvas.getContext('2d');
+		this.width = this.canvas.width;
+		this.height = this.canvas.height;
+		
+		// Safety wrapper to prevent missing method errors
+		this.safeCall = (methodName, ...args) => {
+			if (typeof this[methodName] === 'function') {
+				try {
+					return this[methodName](...args);
+				} catch (error) {
+					console.warn(`Method ${methodName} threw an error:`, error);
+					return null;
+				}
+			} else {
+				console.warn(`Method ${methodName} does not exist, skipping call`);
+				return null;
+			}
+		};
+		
+		// Performance optimizations
+		this.ctx.imageSmoothingEnabled = false; // Disable image smoothing for pixel art
+		this.ctx.imageSmoothingQuality = 'low';
+
+		this.assets = null; // filled after loading
+		this.soundManager = soundManager; // reference to global sound manager
+
+		this.gameState = {
+			currentScore: 0,
+			totalScore: 0,
+			level: 1,
+			lives: 3,
+			gameOver: false,
+			paused: false
+		};
+		
+		// Debug: Log initial game state
+		console.log('🔍 Initial game state level:', this.gameState.level);
+
+		this.player = null;
+		this.enemies = [];
+		this.bombs = [];
+		this.thrownBombs = []; // Array for bombs thrown by Big Guy enemies
+		this.potions = []; // Array for collectible potions
+		this.potionSpawnTimer = 0; // Timer for dynamic potion spawning
+		this.lastHealthCheck = 100; // Track player's last health for spawning logic
+		this.platforms = [];
+		this.door = null;
+		this.worldWidth = 2400; // dynamic; recomputed from platforms
+		this.worldHeight = this.canvas.height; // fixed for now
+		this.levelTransitionTimer = 0; // ms; >0 means transitioning
+
+		this.camera = { x: 0, y: 0 };
+		this.keys = {};
+		this.lastTime = 0;
+
+		this.setupInput();
+		this.boot();
+	}
+
+	// Get player's wallet address - needed for database operations
+	getPlayerWalletAddress() {
+		return window.walletConnection && window.walletConnection.publicKey ? 
+			window.walletConnection.publicKey.toString() : null;
+	}
+
+	// Handle player death with recharge system
+	async handlePlayerDeath() {
+		try {
+			console.log('💀 Player death detected - handling with recharge system');
+			
+			// Update game state
+			this.gameState.lives = Math.max(0, this.gameState.lives - 1);
+			console.log(`💀 Lives remaining: ${this.gameState.lives}`);
+			
+			// Update recharge system if available
+			if (window.rechargeManager) {
+				const newLives = await window.rechargeManager.onPlayerDeath();
+				console.log(`🔋 Recharge system updated - lives: ${newLives}`);
+				
+				// Sync game state with recharge system
+				this.gameState.lives = newLives;
+				
+				// If no lives remaining, show game over
+				if (newLives === 0) {
+					console.log('🔋 No lives remaining - showing game over screen');
+					this.showGameOver();
+				}
+			} else {
+				console.warn('⚠️ RechargeManager not available - using fallback death handling');
+				// Fallback: show game over if no lives
+				if (this.gameState.lives === 0) {
+					this.showGameOver();
+				}
+			}
+			
+			// Update UI
+			this.updateUI();
+			
+		} catch (error) {
+			console.error('❌ Error handling player death:', error);
+			// Fallback: show game over
+			this.showGameOver();
+		}
+	}
+
+	async boot() {
+		try {
+			console.log('🚀 Starting robust game boot with enhanced error handling...');
+			
+			// Add timeout protection for the entire boot process
+			const bootTimeout = setTimeout(() => {
+				console.error('❌ Game boot timeout - took longer than 30 seconds');
+				throw new Error('Game boot timeout - took longer than 30 seconds');
+			}, 30000); // 30 second timeout
+			
+			// Step 1: Load assets using default asset loader with timeout protection
+			console.log('Step 1: Loading game assets...');
+			
+			// Use the built-in reliable asset loader
+			const loader = new AssetLoader();
+			loader.loadAll((loaded, total) => {
+				console.log(`Loaded ${loaded}/${total} assets`);
+			}).then((assets) => {
+				this.assets = assets;
+				this.safeCall('setupGame');
+			}).catch((error) => {
+				console.error('Failed to load assets:', error);
+			}).finally(() => {
+				clearTimeout(bootTimeout);
+			});
+		} catch (error) {
+			console.error('Unexpected error during game boot:', error);
+		}
+	}
+
+	setupGame() {
+		console.log('Setting up game...');
+		
+		// Initialize player
+		this.player = new Player(this.assets.player, this.worldWidth, this.worldHeight);
+		
+		// Initialize platforms
+		this.platforms = [
+			new Platform(0, this.worldHeight - 100, this.worldWidth, 100, this.assets.objects['tiles']['blocks']),
+			new Platform(100, this.worldHeight - 200, 500, 50, this.assets.objects['tiles']['block2']),
+			new Platform(700, this.worldHeight - 300, 300, 50, this.assets.objects['tiles']['block3']),
+			new Platform(1100, this.worldHeight - 400, 200, 50, this.assets.objects['tiles']['block4']),
+			new Platform(1400, this.worldHeight - 500, 400, 50, this.assets.objects['tiles']['block5']),
+			new Platform(1900, this.worldHeight - 600, 300, 50, this.assets.objects['tiles']['block6']),
+		];
+		
+		// Initialize enemies
+		this.enemies = [
+			new Enemy(this.assets.enemies['Bald Pirate'], 200, this.worldHeight - 150, this.assets.objects['tiles']['blocks']),
+			new Enemy(this.assets.enemies['Cucumber'], 600, this.worldHeight - 250, this.assets.objects['tiles']['block2']),
+			new Enemy(this.assets.enemies['Big Guy'], 1000, this.worldHeight - 350, this.assets.objects['tiles']['block3']),
+			new Enemy(this.assets.enemies['Captain'], 1400, this.worldHeight - 450, this.assets.objects['tiles']['block4']),
+			new Enemy(this.assets.enemies['Whale'], 1800, this.worldHeight - 550, this.assets.objects['tiles']['block5']),
+		];
+		
+		// Initialize door
+		this.door = new Door(this.assets.objects['2-Door'], this.worldWidth - 200, this.worldHeight - 150, this.assets.objects['tiles']['blocks']);
+		
+		// Initialize bombs
+		this.bombs = [];
+		
+		// Initialize player's health
+		this.player.health = 100;
+		
+		// Initialize level transition timer
+		this.levelTransitionTimer = 0;
+		
+		// Initialize camera
+		this.camera = { x: 0, y: 0 };
+		
+		// Initialize keys
+		this.keys = {};
+		
+		// Initialize last time
+		this.lastTime = 0;
+		
+		// Initialize game state
+		this.gameState = {
+			currentScore: 0,
+			totalScore: 0,
+			level: 1,
+			lives: 3,
+			gameOver: false,
+			paused: false
+		};
+		
+		// Initialize potion spawn timer
+		this.potionSpawnTimer = 0;
+		
+		// Initialize last health check
+		this.lastHealthCheck = 100;
+		
+		// Initialize thrown bombs
+		this.thrownBombs = [];
+		
+		// Initialize potions
+		this.potions = [];
+		
+		// Start the game loop
+		this.gameLoop();
+	}
+
+	gameLoop() {
+		if (this.gameState.gameOver) {
+			return;
+		}
+		
+		if (this.gameState.paused) {
+			return;
+		}
+		
+		const now = Date.now();
+		const dt = (now - this.lastTime) / 1000;
+		
+		// Update game state
+		this.update(dt);
+		
+		// Render game state
+		this.render();
+		
+		// Update last time
+		this.lastTime = now;
+		
+		// Request next frame
+		requestAnimationFrame(() => this.gameLoop());
+	}
+
+	update(dt) {
+		// Update player
+		this.player.update(dt, this.platforms, this.keys);
+		
+		// Update enemies
+		this.enemies.forEach(enemy => enemy.update(dt, this.platforms, this.player));
+		
+		// Update bombs
+		this.bombs.forEach(bomb => bomb.update(dt, this.platforms, this.enemies, this.player));
+		
+		// Update thrown bombs
+		this.thrownBombs.forEach(bomb => bomb.update(dt, this.platforms, this.enemies, this.player));
+		
+		// Update potions
+		this.potions.forEach(potion => potion.update(dt, this.player));
+		
+		// Update potion spawn timer
+		this.potionSpawnTimer -= dt;
+		if (this.potionSpawnTimer <= 0) {
+			this.spawnPotion();
+			this.potionSpawnTimer = 10; // Respawn every 10 seconds
+		}
+		
+		// Update last health check
+		if (this.player.health < this.lastHealthCheck) {
+			this.lastHealthCheck = this.player.health;
+			this.spawnPotion();
+		}
+		
+		// Update level transition timer
+		if (this.levelTransitionTimer > 0) {
+			this.levelTransitionTimer -= dt;
+			if (this.levelTransitionTimer <= 0) {
+				this.nextLevel();
+			}
+		}
+		
+		// Update camera
+		this.camera.x = this.player.x - this.width / 2;
+		this.camera.y = this.player.y - this.height / 2;
+		
+		// Clamp camera to world bounds
+		this.camera.x = Math.min(Math.max(this.camera.x, 0), this.worldWidth - this.width);
+		this.camera.y = Math.min(Math.max(this.camera.y, 0), this.worldHeight - this.height);
+		
+		// Check for game over
+		if (this.player.health <= 0) {
+			this.handlePlayerDeath();
+		}
+	}
+
+	render() {
+		this.ctx.clearRect(0, 0, this.width, this.height);
+		
+		// Render background
+		this.ctx.drawImage(this.assets.backgrounds[`bgblock${this.gameState.level}`], 0, 0);
+		
+		// Render platforms
+		this.platforms.forEach(platform => platform.render(this.ctx, this.camera));
+		
+		// Render enemies
+		this.enemies.forEach(enemy => enemy.render(this.ctx, this.camera));
+		
+		// Render bombs
+		this.bombs.forEach(bomb => bomb.render(this.ctx, this.camera));
+		
+		// Render thrown bombs
+		this.thrownBombs.forEach(bomb => bomb.render(this.ctx, this.camera));
+		
+		// Render player
+		this.player.render(this.ctx, this.camera);
+		
+		// Render door
+		this.door.render(this.ctx, this.camera);
+		
+		// Render potions
+		this.potions.forEach(potion => potion.render(this.ctx, this.camera));
+		
+		// Render UI
+		this.renderUI();
+	}
+
+	renderUI() {
+		this.ctx.fillStyle = 'white';
+		this.ctx.font = '24px Arial';
+		this.ctx.fillText(`Score: ${this.gameState.currentScore}`, 10, 30);
+		this.ctx.fillText(`Lives: ${this.gameState.lives}`, 10, 60);
+		this.ctx.fillText(`Level: ${this.gameState.level}`, 10, 90);
+		this.ctx.fillText(`Health: ${this.player.health}`, 10, 120);
+	}
+
+	nextLevel() {
+		console.log('Advancing to next level...');
+		
+		// Increment level
+		this.gameState.level += 1;
+		
+		// Reset player position
+		this.player.x = 100;
+		this.player.y = this.worldHeight - 200;
+		
+		// Reset enemies
+		this.enemies = [
+			new Enemy(this.assets.enemies['Bald Pirate'], 200, this.worldHeight - 150, this.assets.objects['tiles']['blocks']),
+			new Enemy(this.assets.enemies['Cucumber'], 600, this.worldHeight - 250, this.assets.objects['tiles']['block2']),
+			new Enemy(this.assets.enemies['Big Guy'], 1000, this.worldHeight - 350, this.assets.objects['tiles']['block3']),
+			new Enemy(this.assets.enemies['Captain'], 1400, this.worldHeight - 450, this.assets.objects['tiles']['block4']),
+			new Enemy(this.assets.enemies['Whale'], 1800, this.worldHeight - 550, this.assets.objects['tiles']['block5']),
+		];
+		
+		// Reset door position
+		this.door.x = this.worldWidth - 200;
+		this.door.y = this.worldHeight - 150;
+		
+		// Reset bombs
+		this.bombs = [];
+		
+		// Reset player's health
+		this.player.health = 100;
+		
+		// Reset level transition timer
+		this.levelTransitionTimer = 0;
+		
+		// Reset camera
+		this.camera = { x: 0, y: 0 };
+		
+		// Reset keys
+		this.keys = {};
+		
+		// Reset last time
+		this.lastTime = 0;
+		
+		// Reset game state
+		this.gameState = {
+			currentScore: 0,
+			totalScore: 0,
+			level: 1,
+			lives: 3,
+			gameOver: false,
+			paused: false
+		};
+		
+		// Reset potion spawn timer
+		this.potionSpawnTimer = 0;
+		
+		// Reset last health check
+		this.lastHealthCheck = 100;
+		
+		// Reset thrown bombs
+		this.thrownBombs = [];
+		
+		// Reset potions
+		this.potions = [];
+		
+		// Start the game loop
+		this.gameLoop();
+	}
+
+	spawnPotion() {
+		console.log('Spawning potion...');
+		
+		// Choose a random position
+		const x = Math.random() * (this.worldWidth - 100) + 50;
+		const y = Math.random() * (this.worldHeight - 100) + 50;
+		
+		// Create a new potion
+		const potion = new Potion(x, y, this.assets.shield);
+		
+		// Add potion to the list
+		this.potions.push(potion);
+	}
+
+	showGameOver() {
+		console.log('Showing game over screen...');
+		
+		// Stop the game loop
+		this.gameState.gameOver = true;
+		
+		// Render game over screen
+		this.ctx.fillStyle = 'red';
+		this.ctx.font = '48px Arial';
+		this.ctx.fillText('Game Over', this.width / 2 - 100, this.height / 2);
+		
+		// Update UI
+		this.updateUI();
+	}
+
+	updateUI() {
+		console.log('Updating UI...');
+		
+		// Render UI
+		this.renderUI();
+	}
+
+	setupInput() {
+		console.log('Setting up input...');
+		
+		// Add keyboard event listeners
+		window.addEventListener('keydown', (e) => {
+			this.keys[e.key] = true;
+		});
+		
+		window.addEventListener('keyup', (e) => {
+			this.keys[e.key] = false;
+		});
+	}
+}
+
+async boot() {
+	try {
+		console.log('🚀 Starting robust game boot with enhanced error handling...');
+		
+		// Add timeout protection for the entire boot process
+		const bootTimeout = setTimeout(() => {
+			console.error('❌ Game boot timeout - took longer than 30 seconds');
+			// Try to create emergency game
+			if (this.createEmergencyGame) {
+				console.log('🎮 Creating emergency game due to boot timeout...');
+				this.createEmergencyGame();
+			} else {
+				// If emergency game creation fails, show error
+				this.handleBootFailure(new Error('Game boot timeout - took longer than 30 seconds'));
+			}
+		}, 30000); // 30 second timeout
+		
+		// Step 1: Load assets using default asset loader with timeout protection
+		console.log('Step 1: Loading game assets...');
+		
+		// Use the built-in reliable asset loader
+		const loader = new AssetLoader();
+		
+		// Add timeout to asset loading - use loadAll instead of loadAllAssets
+		let assetLoadingComplete = false;
+		const assetLoadingPromise = loader.loadAll((loaded, total) => {
+			const progress = (loaded / total) * 100;
+			try {
+				const loadingFill = document.getElementById('loadingFill');
+				const loadingText = document.getElementById('loadingText');
+				if (loadingFill) loadingFill.style.width = progress + '%';
+				if (loadingText) loadingText.textContent = `⚡ Loading... ${Math.round(progress)}%`;
+			} catch (uiError) {
+				console.warn('⚠️ Loading UI update failed:', uiError);
+			}
+			
+			// If we've loaded all assets, mark as complete
+			if (loaded >= total && total > 0) {
+				assetLoadingComplete = true;
+			}
+		});
+		
+		// Apply timeout to asset loading
+		this.assets = await Promise.race([
+			assetLoadingPromise,
+			new Promise((_, reject) => {
+				// Add additional timeout check
+				const assetTimeout = setTimeout(() => {
+					if (!assetLoadingComplete) {
+						console.error('❌ Asset loading timeout - took longer than 30 seconds');
+						reject(new Error('Asset loading timeout - took longer than 30 seconds'));
+					}
+				}, 30000);
+				
+				// Clean up timeout when promise resolves
+				assetLoadingPromise.then(() => clearTimeout(assetTimeout)).catch(() => clearTimeout(assetTimeout));
+			})
+		]);
+		
+		console.log('✅ Assets loaded successfully');
+		
+		if (!this.assets) {
+			throw new Error('Assets failed to load completely');
+		}
+
+		// Step 2: Validate and create fallback sprites if needed
+		console.log('Step 2: Validating player assets...');
+		const hasValidPlayerAssets = this.validatePlayerAssets();
+		if (!hasValidPlayerAssets) {
+			console.warn('⚠️ Creating fallback sprites...');
+			this.createFallbackSprites();
+		}
+
+		// Step 3: Initialize game world safely
+		console.log('Step 3: Initializing game world...');
+		this.initializeGameWorld();
+
+		// Step 4: Create player with error handling
+		console.log('Step 4: Creating player...');
+		this.createPlayerSafely();
+
+		// Step 5: Initialize game entities
+		console.log('Step 5: Spawning game entities...');
+		this.initializeGameEntities();
+
+		// Step 6: Start game systems
+		console.log('Step 6: Starting game systems...');
+		this.startGameSystems();
+
+		// Step 7: Initialize Web3 safely (non-blocking)
+		console.log('Step 7: Initializing Web3 systems...');
+		this.initializeWeb3Safely();
+
+		console.log('✅ Game boot completed successfully!');
+		
+		// Clear the timeout since we've completed successfully
+		clearTimeout(bootTimeout);
+
+	} catch (error) {
+		console.error('❌ Critical error during game boot:', error);
+		this.handleBootFailure(error);
+	}
+}
 
 	// Helper method: Validate that player assets are properly loaded
 	validatePlayerAssets() {
@@ -6163,20 +7489,54 @@ window.startMusic = function() {
 window.startGame = async function() {
 	console.log('startGame() called!');
 	
-	// Check if Web3 is ready
-	if (!window.web3Ready) {
-		console.log('⏳ Waiting for Web3 to be ready...');
-		setTimeout(() => {
-			if (window.web3Ready) {
-				console.log('✅ Web3 ready, starting game...');
-				window.startGame();
-			} else {
-				console.error('❌ Web3 not ready after timeout');
-				alert('Web3 initialization failed. Please refresh the page.');
+	// Add a timeout to prevent indefinite hanging
+	const startGameTimeout = setTimeout(() => {
+		console.error('❌ startGame() timeout - took longer than 30 seconds');
+		if (typeof game !== 'undefined' && game) {
+			console.log('🎮 Forcing game start with emergency mode');
+			try {
+				game.createEmergencyGame();
+			} catch (error) {
+				console.error('❌ Emergency game creation failed:', error);
+				// Show error on loading screen
+				try {
+					const loadingText = document.getElementById('loadingText');
+					if (loadingText) {
+						loadingText.textContent = '❌ Emergency game creation failed. Please refresh the page.';
+					}
+				} catch (uiError) {
+					console.warn('⚠️ UI update failed:', uiError);
+				}
+				alert('Game failed to start. Please refresh the page.');
 			}
-		}, 1000);
-		return;
-	}
+		} else {
+			// Create a new game instance in emergency mode
+			try {
+				console.log('🎮 Creating new game instance in emergency mode');
+				game = new PirateBombGame();
+				game.createEmergencyGame();
+			} catch (error) {
+				console.error('❌ Emergency game creation failed:', error);
+				// Show error on loading screen
+				try {
+					const loadingText = document.getElementById('loadingText');
+					if (loadingText) {
+						loadingText.textContent = '❌ Emergency game creation failed. Please refresh the page.';
+					}
+				} catch (uiError) {
+					console.warn('⚠️ UI update failed:', uiError);
+				}
+				alert('Game failed to start. Please refresh the page.');
+			}
+		}
+	}, 30000); // 30 second timeout
+	
+	// Clear timeout when function completes
+	const clearStartTimeout = () => {
+		if (startGameTimeout) {
+			clearTimeout(startGameTimeout);
+		}
+	};
 	
 	// Check recharge system before starting game
 	if (window.rechargeManager) {
@@ -6185,12 +7545,18 @@ window.startGame = async function() {
 			// Don't show popup - just return silently
 			// The recharge bar will show the countdown automatically
 			console.log('🔋 Player cannot play - recharge bar will show countdown');
+			clearStartTimeout(); // Clear timeout
 			return;
 		}
 		
 		// Notify recharge system that game is starting
-		await window.rechargeManager.onGameStart();
-		console.log('✅ Recharge system approved game start');
+		try {
+			await window.rechargeManager.onGameStart();
+			console.log('✅ Recharge system approved game start');
+		} catch (error) {
+			console.warn('⚠️ Recharge system error:', error);
+			// Continue anyway
+		}
 	}
 	
 	// Check if DOM is ready
@@ -6199,6 +7565,7 @@ window.startGame = async function() {
 		setTimeout(() => {
 			window.startGame();
 		}, 500);
+		clearStartTimeout(); // Clear timeout
 		return;
 	}
 	
@@ -6216,6 +7583,7 @@ window.startGame = async function() {
 		const canvas = document.getElementById('gameCanvas');
 		if (!canvas) {
 			console.error('Canvas element not found! Cannot start game.');
+			clearStartTimeout(); // Clear timeout
 			return;
 		}
 		console.log('Canvas found, proceeding with game initialization...');
@@ -6230,6 +7598,9 @@ window.startGame = async function() {
 		console.log('Creating PirateBombGame...');
 		game = new PirateBombGame(); 
 		window.game = game; // Make game globally accessible for enemy skills
+		
+		// Clear timeout since game creation started successfully
+		clearStartTimeout();
 	
 		// Initialize Player Registry if wallet is connected
 		if (window.walletConnection && window.walletConnection.isConnected) {
@@ -6263,6 +7634,8 @@ window.startGame = async function() {
 							} else {
 								console.warn('⚠️ Failed to sync game state to database:', result.error);
 							}
+						}).catch(error => {
+							console.warn('⚠️ Error syncing game state to database:', error);
 						});
 					}
 				}
@@ -6350,108 +7723,63 @@ window.startGame = async function() {
 						updatedAt: new Date().toISOString()
 					};
 					
-					// Save to blockchain storage
-					await this.savePlayerProfile(newProfile);
-					window.playerProfile = newProfile;
-					
-					console.log(`✅ New player profile created! Username: ${username}`);
-					console.log('💰 Starting balance: 0 $BOOM tokens');
-					return { success: true, signature: 'blockchain_tx_signature' };
+					// Save new profile
+					const saveResult = await this.savePlayerProfile(newProfile);
+					if (saveResult) {
+						window.playerProfile = newProfile;
+						console.log('✅ New player profile created and saved');
+						return { success: true, signature: 'blockchain_tx_signature' };
+					} else {
+						console.error('❌ Failed to save new player profile');
+						return { success: false, error: 'Failed to save profile' };
+					}
 				} catch (error) {
-					console.error('❌ Failed to initialize player profile:', error);
+					console.error('❌ Error initializing player profile:', error);
 					return { success: false, error: error.message };
 				}
 			}
 		};
 		
-		// Initialize smart contract integration
+		// Initialize player profile
 		try {
-			// Initialize Player Profile Manager
-			window.playerProfileManager = new PlayerProfileManager(window.walletConnection);
-			const profileManagerInit = await window.playerProfileManager.initialize();
-			
-			if (profileManagerInit) {
-				console.log('✅ Player Profile Manager initialized');
-				
-				// Try to load existing player profile
-				const existingProfile = await window.playerProfileManager.loadPlayerProfile();
-				
-				if (existingProfile) {
-					console.log('✅ Loaded existing player profile');
-					window.playerProfile = existingProfile;
-					
-					// Sync game state with profile data
-					if (game) {
-						console.log('🔍 Before syncing profile - Game level:', game.gameState.level);
-						console.log('🔍 Profile level:', existingProfile.level);
-						game.gameState.level = 1; // Always start from level 1
-						game.gameState.totalScore = existingProfile.totalScore || 0;
-						game.gameState.currentScore = 0; // Reset current level score
-						console.log(`🔄 Synced game state with profile: Level ${game.gameState.level}, Total Score: ${game.gameState.totalScore}`);
-						console.log('🔍 After syncing profile - Game level:', game.gameState.level);
-						
-						// Update UI to reflect loaded data
-						if (window.walletConnection && window.walletConnection.updatePlayerInfo) {
-							window.walletConnection.updatePlayerInfo();
-						}
-						if (game.updateUI) {
-							game.updateUI();
-						}
-						
-						// Force update token display immediately
-						const playerTokenBalance = document.getElementById('playerTokenBalance');
-						if (playerTokenBalance) {
-							const currentTokens = Math.floor(game.gameState.totalScore * 0.10);
-							playerTokenBalance.textContent = currentTokens;
-							console.log(`💰 Game loaded - Token display updated: ${currentTokens} (from score: ${game.gameState.totalScore})`);
-						}
-					}
-				} else {
-					// Create new player profile
-					const playerAddress = window.walletConnection.publicKey.toString();
-					const username = `Kaboom_${playerAddress.slice(0, 6)}`;
-					const createResult = await window.playerProfileManager.createPlayerProfile(username);
-					
-					if (createResult.success) {
-						console.log('✅ New player profile created');
-						window.playerProfile = window.playerProfileManager.getPlayerProfile();
-					} else {
-						console.warn('⚠️ Failed to create player profile:', createResult.error);
-					}
-				}
+			const initResult = await window.playerRegistry.initializePlayer('Pirate');
+			if (initResult.success) {
+				console.log('✅ Player registry initialized successfully');
 			} else {
-				console.warn('⚠️ Player Profile Manager initialization failed');
+				console.warn('⚠️ Player registry initialization warning:', initResult.error);
 			}
-			
-			// Initialize Leaderboard
-			window.leaderboard = new Leaderboard(window.walletConnection);
-			const leaderboardInit = await window.leaderboard.initialize();
-			
-			if (leaderboardInit) {
-				console.log('✅ Leaderboard initialized');
-				// Load leaderboard data
-				await window.leaderboard.loadLeaderboard();
-				await window.leaderboard.getPlayerRank();
-			} else {
-				console.warn('⚠️ Leaderboard initialization failed');
-			}
-			
 		} catch (error) {
-			console.warn('⚠️ Smart contract integration error, but continuing with game:', error);
+			console.error('❌ Error during player registry initialization:', error);
+			// Continue anyway
 		}
+		
+		// Update UI with player info
+		try {
+			if (window.walletConnection && window.walletConnection.updatePlayerInfo) {
+				window.walletConnection.updatePlayerInfo();
+			}
+		} catch (error) {
+			console.warn('⚠️ Error updating player info UI:', error);
 		}
-	
-	// Start the game
-	console.log('🎮 Starting Kaboom game...');
-	await game.boot();
-	
-
-	
-	console.log('✅ Game started successfully!');
-	
-	} catch (error) {
-		console.error('❌ Game initialization failed:', error);
-		console.error('Error details:', error.stack);
-		alert('Error: Game initialization failed. Please refresh the page. Error: ' + error.message);
 	}
-};
+		
+		console.log('✅ Game start completed successfully!');
+		
+	} catch (error) {
+		console.error('❌ Error during game start:', error);
+		clearStartTimeout(); // Clear timeout
+		
+		// Show error on loading screen
+		try {
+			const loadingText = document.getElementById('loadingText');
+			if (loadingText) {
+				loadingText.textContent = `❌ Game start failed: ${error.message}`;
+			}
+		} catch (uiError) {
+			console.warn('⚠️ UI update failed:', uiError);
+		}
+		
+		// Show alert to user
+		alert('Game failed to start. Error: ' + error.message);
+	}
+}

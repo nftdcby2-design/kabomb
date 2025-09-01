@@ -19,6 +19,7 @@ class GameAssetsLoader {
         this.maxConcurrentLoads = 3; // Reduced for better stability
         this.activeLoads = 0;
         this.retryAttempts = 2;
+        this.timeoutDuration = 5000; // 5 second timeout
         
         // Asset priorities
         this.PRIORITY = {
@@ -61,36 +62,72 @@ class GameAssetsLoader {
             try {
                 const img = await Promise.race([
                     this.loadSingleAsset(asset.path),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Timeout')), 2000)
-                    )
+                    new Promise((_, reject) => {
+                        setTimeout(() => {
+                            console.warn(`⏰ Timeout loading critical asset: ${asset.id} (${asset.path})`);
+                            reject(new Error(`Timeout loading ${asset.id}`));
+                        }, this.timeoutDuration);
+                    })
                 ]);
                 
                 this.assets.set(asset.id, img);
                 console.log(`✅ Critical asset loaded: ${asset.id}`);
                 
                 loaded++;
-                if (onProgress) onProgress(loaded, total);
+                if (onProgress) {
+                    try {
+                        onProgress(loaded, total);
+                    } catch (progressError) {
+                        console.warn('⚠️ Progress callback error:', progressError);
+                    }
+                }
                 
                 return img;
             } catch (error) {
-                console.warn(`⚠️ Critical asset failed, using fallback: ${asset.id}`);
+                console.warn(`⚠️ Critical asset failed, using fallback: ${asset.id}`, error.message);
                 const fallback = this.getFallbackSprite(asset.id);
                 this.assets.set(asset.id, fallback);
                 
                 loaded++;
-                if (onProgress) onProgress(loaded, total);
+                if (onProgress) {
+                    try {
+                        onProgress(loaded, total);
+                    } catch (progressError) {
+                        console.warn('⚠️ Progress callback error:', progressError);
+                    }
+                }
                 
                 return fallback;
             }
         });
 
-        await Promise.allSettled(loadPromises);
+        // Wait for all critical assets with overall timeout
+        try {
+            await Promise.race([
+                Promise.allSettled(loadPromises),
+                new Promise((_, reject) => {
+                    setTimeout(() => {
+                        console.error('❌ Overall critical assets loading timeout');
+                        reject(new Error('Overall critical assets loading timeout'));
+                    }, this.timeoutDuration * 2);
+                })
+            ]);
+        } catch (error) {
+            console.warn('⚠️ Critical assets loading timeout or error:', error.message);
+            // Continue with whatever assets we have
+        }
         
         console.log('🎮 CRITICAL ASSETS READY - Game can start!');
+        console.log(`📊 Loaded ${loaded}/${total} critical assets`);
         
         // Start background loading immediately
-        setTimeout(() => this.startBackgroundLoading(), 100);
+        setTimeout(() => {
+            try {
+                this.startBackgroundLoading();
+            } catch (error) {
+                console.warn('⚠️ Background loading error:', error);
+            }
+        }, 100);
         
         return this.buildGameAssets();
     }
@@ -110,10 +147,12 @@ class GameAssetsLoader {
                 return img;
             } catch (error) {
                 if (attempt === retries) {
+                    console.error(`❌ Failed to load asset after ${retries + 1} attempts: ${path}`, error.message);
                     throw error;
                 }
-                console.warn(`⚠️ Retry ${attempt + 1}/${retries} for: ${path}`);
-                await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)));
+                console.warn(`⚠️ Retry ${attempt + 1}/${retries} for: ${path}`, error.message);
+                // Add exponential backoff
+                await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempt)));
             }
         }
     }
@@ -134,16 +173,28 @@ class GameAssetsLoader {
             const img = new Image();
             img.crossOrigin = 'anonymous';
             
+            // Add timeout for image loading
+            const timeout = setTimeout(() => {
+                console.warn(`⏰ Image loading timeout: ${encodedSrc}`);
+                reject(new Error(`Timeout loading image: ${encodedSrc}`));
+            }, this.timeoutDuration);
+            
             img.onload = () => {
+                clearTimeout(timeout);
                 // Verify image loaded correctly
                 if (img.complete && img.naturalWidth > 0) {
                     resolve(img);
                 } else {
+                    console.warn(`⚠️ Invalid image loaded: ${encodedSrc}`);
                     reject(new Error(`Invalid image: ${encodedSrc}`));
                 }
             };
             
-            img.onerror = () => reject(new Error(`Failed to load: ${encodedSrc}`));
+            img.onerror = () => {
+                clearTimeout(timeout);
+                console.warn(`❌ Failed to load image: ${encodedSrc}`);
+                reject(new Error(`Failed to load image: ${encodedSrc}`));
+            };
             
             // Set src after setting up handlers
             img.src = encodedSrc;
@@ -419,57 +470,100 @@ class GameAssetsLoader {
         const gameAssets = {
             player: {},
             enemies: {},
-            objects: {}
+            objects: {},
+            backgrounds: {}
         };
 
-        // Map loaded assets to game format
-        if (this.assets.has('player_idle_full')) {
-            gameAssets.player['1-Idle'] = this.assets.get('player_idle_full');
-        } else {
-            gameAssets.player['1-Idle'] = [this.assets.get('player_idle')];
-        }
-
-        if (this.assets.has('player_run_full')) {
-            gameAssets.player['2-Run'] = this.assets.get('player_run_full');
-        } else {
-            gameAssets.player['2-Run'] = [this.assets.get('player_run')];
-        }
-
-        if (this.assets.has('player_jump')) {
-            gameAssets.player['4-Jump'] = this.assets.get('player_jump');
-        } else {
-            gameAssets.player['4-Jump'] = [this.assets.get('player_idle')];
-        }
-
-        gameAssets.player['5-Fall'] = [this.assets.get('player_idle')];
-
-        // Enemy assets
-        gameAssets.enemies['Bald Pirate'] = {};
-        if (this.assets.has('enemy_idle_full')) {
-            gameAssets.enemies['Bald Pirate']['1-Idle'] = this.assets.get('enemy_idle_full');
-        } else {
-            gameAssets.enemies['Bald Pirate']['1-Idle'] = [this.assets.get('enemy_basic')];
-        }
-
-        // Object assets
-        gameAssets.objects = {
-            '1-BOMB': {
-                '1-Bomb Off': [this.assets.get('bomb_basic')]
-            },
-            'tiles': {
-                'blocks': [this.assets.get('tiles_basic')]
+        try {
+            // Map loaded assets to game format
+            if (this.assets.has('player_idle_full')) {
+                gameAssets.player['1-Idle'] = this.assets.get('player_idle_full');
+            } else if (this.assets.has('player_idle')) {
+                gameAssets.player['1-Idle'] = [this.assets.get('player_idle')];
+            } else {
+                // Create fallback
+                gameAssets.player['1-Idle'] = [this.getFallbackSprite('player_idle')];
+                console.warn('⚠️ Using fallback for player idle animation');
             }
-        };
 
-        // Add background tiles if loaded
-        if (this.assets.has('tiles_level2')) {
-            gameAssets.objects.tiles['block2'] = [this.assets.get('tiles_level2')];
-        }
-        if (this.assets.has('tiles_level3')) {
-            gameAssets.objects.tiles['block3'] = [this.assets.get('tiles_level3')];
-        }
+            if (this.assets.has('player_run_full')) {
+                gameAssets.player['2-Run'] = this.assets.get('player_run_full');
+            } else if (this.assets.has('player_run')) {
+                gameAssets.player['2-Run'] = [this.assets.get('player_run')];
+            } else {
+                // Create fallback
+                gameAssets.player['2-Run'] = [this.getFallbackSprite('player_run')];
+                console.warn('⚠️ Using fallback for player run animation');
+            }
 
-        return gameAssets;
+            if (this.assets.has('player_jump')) {
+                gameAssets.player['4-Jump'] = this.assets.get('player_jump');
+            } else {
+                // Use idle as fallback
+                gameAssets.player['4-Jump'] = gameAssets.player['1-Idle'];
+                console.warn('⚠️ Using idle animation as fallback for player jump');
+            }
+
+            gameAssets.player['5-Fall'] = gameAssets.player['1-Idle'];
+
+            // Enemy assets
+            gameAssets.enemies['Bald Pirate'] = {};
+            if (this.assets.has('enemy_idle_full')) {
+                gameAssets.enemies['Bald Pirate']['1-Idle'] = this.assets.get('enemy_idle_full');
+            } else if (this.assets.has('enemy_basic')) {
+                gameAssets.enemies['Bald Pirate']['1-Idle'] = [this.assets.get('enemy_basic')];
+            } else {
+                // Create fallback
+                gameAssets.enemies['Bald Pirate']['1-Idle'] = [this.getFallbackSprite('enemy_basic')];
+                console.warn('⚠️ Using fallback for enemy idle animation');
+            }
+
+            // Object assets
+            gameAssets.objects = {
+                '1-BOMB': {
+                    '1-Bomb Off': this.assets.has('bomb_basic') ? [this.assets.get('bomb_basic')] : [this.getFallbackSprite('bomb_basic')]
+                },
+                'tiles': {
+                    'blocks': this.assets.has('tiles_basic') ? [this.assets.get('tiles_basic')] : [this.getFallbackSprite('tiles_basic')]
+                }
+            };
+
+            // Add background tiles if loaded
+            if (this.assets.has('tiles_level2')) {
+                gameAssets.objects.tiles['block2'] = [this.assets.get('tiles_level2')];
+            }
+            if (this.assets.has('tiles_level3')) {
+                gameAssets.objects.tiles['block3'] = [this.assets.get('tiles_level3')];
+            }
+
+            console.log('✅ Game assets built successfully');
+            return gameAssets;
+        } catch (error) {
+            console.error('❌ Error building game assets:', error);
+            // Return minimal fallback assets
+            return {
+                player: {
+                    '1-Idle': [this.getFallbackSprite('player_idle')],
+                    '2-Run': [this.getFallbackSprite('player_run')],
+                    '4-Jump': [this.getFallbackSprite('player_idle')],
+                    '5-Fall': [this.getFallbackSprite('player_idle')]
+                },
+                enemies: {
+                    'Bald Pirate': {
+                        '1-Idle': [this.getFallbackSprite('enemy_basic')]
+                    }
+                },
+                objects: {
+                    '1-BOMB': {
+                        '1-Bomb Off': [this.getFallbackSprite('bomb_basic')]
+                    },
+                    'tiles': {
+                        'blocks': [this.getFallbackSprite('tiles_basic')]
+                    }
+                },
+                backgrounds: {}
+            };
+        }
     }
 
     /**
