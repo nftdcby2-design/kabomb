@@ -11,6 +11,10 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Firebase credentials
+serviceAccountKey.json
+firebase-service-account.json
+
 # Database
 *.db
 *.sqlite

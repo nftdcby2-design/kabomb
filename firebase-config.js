@@ -1,12 +1,12 @@
 // Firebase configuration
-// TODO: Replace with your actual Firebase project configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBbj7Ae1UO6yyI35oaaXIGtM1ZuF52XcR4",
+  authDomain: "kabomb-53f1d.firebaseapp.com",
+  projectId: "kabomb-53f1d",
+  storageBucket: "kabomb-53f1d.firebasestorage.app",
+  messagingSenderId: "389894006613",
+  appId: "1:389894006613:web:ae7ac4186f869534ecb1dc",
+  measurementId: "G-4V3F6QDB96"
 };
 
 // Initialize Firebase

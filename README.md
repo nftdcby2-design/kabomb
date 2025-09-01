@@ -14,6 +14,7 @@ Kaboom is a retro-style platformer where players control a bomb-wielding charact
 - **Achievement System** with NFT rewards
 - **Daily/Weekly Challenges** for continuous rewards
 - **Character Progression** with upgradable stats
+- **Firebase Asset Loading** for optimized performance
 
 ## 🚀 Getting Started
 
@@ -40,6 +41,14 @@ Kaboom is a retro-style platformer where players control a bomb-wielding charact
 3. Switch to Solana Devnet for testing
 4. Get some devnet SOL from a faucet
 5. Connect your wallet to the game
+
+### Firebase Setup (Optional but Recommended)
+1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+2. Enable Firestore Database
+3. Register a web app and get the configuration
+4. Update `firebase-config.js` with your Firebase configuration
+5. Deploy Firestore security rules (see `FIREBASE-SETUP.md`)
+6. Import asset data using `node import-asset-data-admin.js`
 
 ## 🎯 How to Play
 
@@ -163,6 +172,12 @@ Kaboom is a retro-style platformer where players control a bomb-wielding charact
 - **SPL Tokens**: $BOOM token contract
 - **NFTs**: Achievement badges and character skins
 
+### Firebase Integration
+- **Firestore Database**: Asset loading and management
+- **Progressive Loading**: Critical assets loaded first, others lazy-loaded
+- **Error Handling**: Timeout protection prevents loading bar from freezing
+- **Flexible Configuration**: Easily update asset lists without changing code
+
 ### Smart Contracts
 - **Player Registry**: Store player data and progress
 - **Token Contracts**: $BOOM token contract
@@ -177,6 +192,8 @@ Kaboom is a retro-style platformer where players control a bomb-wielding charact
 pirate-bomb-web3/
 ├── index.html              # Main game file
 ├── game.js                 # Core game logic
+├── firebase-config.js      # Firebase configuration
+├── firebase-asset-loader.js # Firebase asset loading implementation
 ├── web3/
 │   ├── wallet-connection.js # Solana wallet integration
 │   └── reward-system.js    # Token and achievement system
@@ -194,10 +211,18 @@ pirate-bomb-web3/
 - ✅ Character progression
 - ✅ NFT integration (placeholder)
 - ✅ Staking system (placeholder)
+- ✅ Firebase asset loading (optional)
+
+### Firebase Scripts
+- `import-asset-data.js` - Import asset data using client SDK
+- `import-asset-data-admin.js` - Import asset data using Admin SDK
+- `test-firebase-config.js` - Test Firebase connection
+- `deploy-firebase-rules.sh` - Deploy Firestore security rules
 
 ### Upcoming Features
 - 🔄 Smart contract deployment
 - 🔄 Real token minting
+- 🔄 Enhanced Firebase integration for player data
 - 🔄 NFT marketplace
 - 🔄 Multiplayer features
 - 🔄 Mobile app

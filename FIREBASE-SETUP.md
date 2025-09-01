@@ -9,6 +9,53 @@ This document explains how to set up Firebase for the asset loading system.
 3. Enable Firestore Database
 4. Register your web app and get the configuration
 
+## Firestore Security Rules
+
+To allow the game to read asset data and for the import script to write data, you need to set up Firestore security rules.
+
+Create a `firebase/firestore.rules` file with the following content:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read access to game assets for all users
+    match /gameAssets/{document} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Allow read/write access to player data only for the owner
+    match /players/{playerId} {
+      allow read, write: if request.auth != null && request.auth.uid == playerId;
+    }
+    
+    // Allow read access to achievements for all users
+    match /achievements/{achievementId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
+```
+
+## Deploying Security Rules
+
+1. Install Firebase CLI:
+   ```bash
+   npm install -g firebase-tools
+   ```
+
+2. Login to Firebase:
+   ```bash
+   firebase login
+   ```
+
+3. Deploy the rules:
+   ```bash
+   firebase deploy --only firestore:rules
+   ```
+
 ## Firestore Data Structure
 
 Create a collection called `gameAssets` with a document named `assetList` containing the following structure:
@@ -67,6 +114,19 @@ Create a collection called `gameAssets` with a document named `assetList` contai
   }
 }
 ```
+
+## Importing Data to Firestore
+
+There are two scripts to import the asset data:
+
+1. `import-asset-data.js` - Uses the client SDK (requires security rules update)
+2. `import-asset-data-admin.js` - Uses the Admin SDK (requires service account key)
+
+For the Admin SDK method:
+1. Go to Firebase Console > Project Settings > Service Accounts
+2. Generate a new private key and download the JSON file
+3. Rename the file to `serviceAccountKey.json` and place it in the project root
+4. Run: `node import-asset-data-admin.js`
 
 ## Firebase Configuration
 
