@@ -559,45 +559,51 @@ class PirateBombGame {
     }
 
     gameLoop(currentTime) {
-        // Calculate delta time
-        const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1); // Cap at 100ms
-        this.lastTime = currentTime;
-        
-        // Debug: Log game loop execution
-        if (this.frameCount % 60 === 0) { // Log every 60 frames (about once per second)
-            console.log('🎮 Game loop running - Frame:', this.frameCount, 'Player pos:', this.player.x, this.player.y);
+        try {
+            // Calculate delta time
+            const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1); // Cap at 100ms
+            this.lastTime = currentTime;
+            
+            // Debug: Log game loop execution
+            if (this.frameCount % 60 === 0) { // Log every 60 frames (about once per second)
+                console.log('🎮 Game loop running - Frame:', this.frameCount, 'Player pos:', this.player.x, this.player.y);
+            }
+            this.frameCount = (this.frameCount || 0) + 1;
+            
+            // Update game objects
+            this.updatePlayer(deltaTime);
+            this.updateEnemies(deltaTime);
+            this.updateBombs(deltaTime);
+            
+            // Clear canvas with sky blue background
+            this.ctx.fillStyle = '#87CEEB';
+            this.ctx.fillRect(0, 0, this.width, this.height);
+            
+            // Draw game world
+            this.drawGameWorld();
+            
+            // Draw player
+            this.drawPlayer();
+            
+            // Draw enemies
+            this.drawEnemies();
+            
+            // Draw bombs
+            this.drawBombs();
+            
+            // Draw UI
+            this.drawUI();
+            
+            // Debug info
+            this.drawDebugInfo();
+            
+            // Continue game loop
+            requestAnimationFrame(this.gameLoop.bind(this));
+        } catch (error) {
+            console.error('❌ Game loop error:', error);
+            // Try to continue the loop even if there's an error
+            requestAnimationFrame(this.gameLoop.bind(this));
         }
-        this.frameCount = (this.frameCount || 0) + 1;
-        
-        // Update game objects
-        this.updatePlayer(deltaTime);
-        this.updateEnemies(deltaTime);
-        this.updateBombs(deltaTime);
-        
-        // Clear canvas with sky blue background
-        this.ctx.fillStyle = '#87CEEB';
-        this.ctx.fillRect(0, 0, this.width, this.height);
-        
-        // Draw game world
-        this.drawGameWorld();
-        
-        // Draw player
-        this.drawPlayer();
-        
-        // Draw enemies
-        this.drawEnemies();
-        
-        // Draw bombs
-        this.drawBombs();
-        
-        // Draw UI
-        this.drawUI();
-        
-        // Debug info
-        this.drawDebugInfo();
-        
-        // Continue game loop
-        requestAnimationFrame(this.gameLoop.bind(this));
     }
 
     drawGameWorld() {
@@ -821,6 +827,16 @@ class PirateBombGame {
         this.ctx.fillText(`On Ground: ${this.player.onGround}`, 20, this.height - 50);
         this.ctx.fillText(`Keys: ${Object.keys(this.keys).filter(k => this.keys[k]).join(', ')}`, 20, this.height - 35);
         this.ctx.fillText(`Assets: ${Object.keys(this.assets).join(', ')}`, 20, this.height - 20);
+        
+        // Add frame counter to see if game loop is running
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.font = 'bold 16px Arial';
+        this.ctx.fillText(`Frame: ${this.frameCount || 0}`, 20, this.height - 100);
+        
+        // Add simple animation test
+        const testX = 20 + (this.frameCount || 0) % 100;
+        this.ctx.fillStyle = '#00FF00';
+        this.ctx.fillRect(testX, this.height - 120, 10, 10);
     }
 
     // Setup input handling
