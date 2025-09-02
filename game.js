@@ -348,6 +348,9 @@ class PirateBombGame {
 		};
 
         console.log('✅ Simplified Pirate Bomb Game initialized');
+        
+        // Setup input handling
+        this.setupInput();
 	}
 
 	async boot() {
@@ -841,10 +844,12 @@ class PirateBombGame {
 
     // Setup input handling
     setupInput() {
+        console.log('🎮 Setting up input handlers...');
+        
         // Keyboard input
         document.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
-            console.log('🎮 Key pressed:', e.code, 'Player pos:', this.player.x, this.player.y);
+            console.log('🎮 Key pressed:', e.code, 'Player pos:', this.player.x, this.player.y, 'Keys active:', Object.keys(this.keys).filter(k => this.keys[k]));
             
             // Prevent default for game keys
             if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
@@ -854,7 +859,7 @@ class PirateBombGame {
         
         document.addEventListener('keyup', (e) => {
             this.keys[e.code] = false;
-            console.log('🎮 Key released:', e.code);
+            console.log('🎮 Key released:', e.code, 'Keys active:', Object.keys(this.keys).filter(k => this.keys[k]));
         });
         
         // Mobile controls
