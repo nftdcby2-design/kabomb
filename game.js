@@ -563,6 +563,12 @@ class PirateBombGame {
         const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1); // Cap at 100ms
         this.lastTime = currentTime;
         
+        // Debug: Log game loop execution
+        if (this.frameCount % 60 === 0) { // Log every 60 frames (about once per second)
+            console.log('🎮 Game loop running - Frame:', this.frameCount, 'Player pos:', this.player.x, this.player.y);
+        }
+        this.frameCount = (this.frameCount || 0) + 1;
+        
         // Update game objects
         this.updatePlayer(deltaTime);
         this.updateEnemies(deltaTime);
@@ -595,8 +601,30 @@ class PirateBombGame {
     }
 
     drawGameWorld() {
-        // Draw ground tiles
-        if (this.assets && this.assets.objects && this.assets.objects.tiles && this.assets.objects.tiles.blocks && this.assets.objects.tiles.blocks[0]) {
+        // Draw ground tiles - try direct asset first, then structured
+        if (this.assets && this.assets.tiles_basic) {
+            const tileSize = 32;
+            const groundY = this.height - 100;
+            
+            // Draw ground tiles across the screen
+            for (let x = 0; x < this.width; x += tileSize) {
+                this.ctx.drawImage(this.assets.tiles_basic, x, groundY, tileSize, tileSize);
+            }
+            
+            // Draw some platform tiles
+            const platforms = [
+                { x: 200, y: groundY - 64, width: 96 },
+                { x: 400, y: groundY - 128, width: 96 },
+                { x: 600, y: groundY - 96, width: 96 }
+            ];
+            
+            platforms.forEach(platform => {
+                for (let x = platform.x; x < platform.x + platform.width; x += tileSize) {
+                    this.ctx.drawImage(this.assets.tiles_basic, x, platform.y, tileSize, tileSize);
+                }
+            });
+        } else if (this.assets && this.assets.objects && this.assets.objects.tiles && this.assets.objects.tiles.blocks && this.assets.objects.tiles.blocks[0]) {
+            // Fallback to structured assets
             const tileSize = 32;
             const groundY = this.height - 100;
             
@@ -625,6 +653,13 @@ class PirateBombGame {
     }
 
     drawPlayer() {
+        // Debug: Log what assets are available
+        if (this.frameCount % 60 === 0) {
+            console.log('🎨 Drawing player - Assets available:', Object.keys(this.assets));
+            console.log('🎨 Player idle asset:', this.assets.player_idle);
+            console.log('🎨 Player position:', this.player.x, this.player.y);
+        }
+        
         // Try to use loaded sprite first, then fallback
         if (this.assets && this.assets.player_idle) {
             // Draw player sprite
