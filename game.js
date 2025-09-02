@@ -703,22 +703,35 @@ class PirateBombGame {
     }
 
     drawBombs() {
-        // Try to use loaded sprite first, then fallback
-        if (this.assets && this.assets.bomb_basic) {
-            this.bombs.forEach(bomb => {
-                this.ctx.drawImage(this.assets.bomb_basic, bomb.x, bomb.y, 32, 32);
-            });
-        } else if (this.assets && this.assets.objects && this.assets.objects['1-BOMB'] && this.assets.objects['1-BOMB']['1-Bomb Off'] && this.assets.objects['1-BOMB']['1-Bomb Off'][0]) {
-            this.bombs.forEach(bomb => {
-                this.ctx.drawImage(this.assets.objects['1-BOMB']['1-Bomb Off'][0], bomb.x, bomb.y, 32, 32);
-            });
-        } else {
-            // Fallback bombs
-            this.ctx.fillStyle = '#000000';
-            this.bombs.forEach(bomb => {
-                this.ctx.fillRect(bomb.x, bomb.y, 32, 32);
-            });
-        }
+        this.bombs.forEach(bomb => {
+            if (bomb.active) {
+                // Try to use loaded sprite first, then fallback
+                if (this.assets && this.assets.bomb_basic) {
+                    this.ctx.drawImage(this.assets.bomb_basic, bomb.x, bomb.y, 32, 32);
+                } else if (this.assets && this.assets.objects && this.assets.objects['1-BOMB'] && this.assets.objects['1-BOMB']['1-Bomb Off'] && this.assets.objects['1-BOMB']['1-Bomb Off'][0]) {
+                    this.ctx.drawImage(this.assets.objects['1-BOMB']['1-Bomb Off'][0], bomb.x, bomb.y, 32, 32);
+                } else {
+                    // Fallback bombs with timer indicator
+                    this.ctx.fillStyle = '#000000';
+                    this.ctx.fillRect(bomb.x, bomb.y, 32, 32);
+                    
+                    // Add timer indicator
+                    const timeLeft = 2 - bomb.timer;
+                    this.ctx.fillStyle = '#FF0000';
+                    this.ctx.font = '12px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(Math.ceil(timeLeft), bomb.x + 16, bomb.y + 20);
+                }
+                
+                // Add pulsing effect for active bombs
+                const pulse = Math.sin(this.frameCount * 0.3) * 0.2 + 0.8;
+                this.ctx.globalAlpha = pulse;
+                this.ctx.strokeStyle = '#FF0000';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(bomb.x - 2, bomb.y - 2, 36, 36);
+                this.ctx.globalAlpha = 1.0;
+            }
+        });
     }
 
     drawUI() {
@@ -747,21 +760,35 @@ class PirateBombGame {
     updatePlayer(deltaTime) {
         // Handle input
         if (this.keys['KeyA'] || this.keys['ArrowLeft']) {
-            this.player.velocityX = -5;
+            this.player.velocityX = -8; // Increased from -5 to -8
         } else if (this.keys['KeyD'] || this.keys['ArrowRight']) {
-            this.player.velocityX = 5;
+            this.player.velocityX = 8; // Increased from 5 to 8
         } else {
-            this.player.velocityX *= 0.8; // Friction
+            this.player.velocityX *= 0.7; // Reduced friction for faster response
         }
         
         // Jumping
         if ((this.keys['KeyW'] || this.keys['ArrowUp'] || this.keys['Space']) && this.player.onGround) {
-            this.player.velocityY = -15;
+            this.player.velocityY = -18; // Increased from -15 to -18
             this.player.onGround = false;
         }
         
+        // Bomb dropping
+        if (this.keys['KeyB'] && this.bombs.length < 5) { // Limit to 5 bombs
+            const newBomb = {
+                x: this.player.x + this.player.width / 2 - 16,
+                y: this.player.y + this.player.height,
+                width: 32,
+                height: 32,
+                active: true,
+                timer: 0
+            };
+            this.bombs.push(newBomb);
+            console.log('💣 Bomb dropped at:', newBomb.x, newBomb.y);
+        }
+        
         // Apply gravity
-        this.player.velocityY += 0.8;
+        this.player.velocityY += 1.0; // Increased from 0.8 to 1.0 for faster falling
         
         // Update position
         this.player.x += this.player.velocityX * deltaTime;
@@ -796,24 +823,31 @@ class PirateBombGame {
 
     updateEnemies(deltaTime) {
         this.enemies.forEach(enemy => {
-            // Simple AI - move back and forth
-            enemy.x += enemy.direction * enemy.speed * deltaTime;
+            // Simple AI - move back and forth with increased speed
+            enemy.x += enemy.direction * enemy.speed * deltaTime * 60; // Multiply by 60 to make movement visible
             
             // Change direction at boundaries
             if (enemy.x <= 0 || enemy.x >= this.width - enemy.width) {
                 enemy.direction *= -1;
             }
+            
+            // Add some vertical movement for more dynamic enemies
+            enemy.y += Math.sin(this.frameCount * 0.1) * 0.5;
         });
     }
 
     updateBombs(deltaTime) {
-        this.bombs.forEach(bomb => {
+        this.bombs.forEach((bomb, index) => {
             if (bomb.active) {
                 bomb.timer += deltaTime;
-                // Bombs explode after 3 seconds
-                if (bomb.timer > 3) {
+                
+                // Bombs explode after 2 seconds (faster)
+                if (bomb.timer > 2) {
                     bomb.active = false;
-                    // Add explosion effect here later
+                    console.log('💥 Bomb exploded!');
+                    
+                    // Remove exploded bombs
+                    this.bombs.splice(index, 1);
                 }
             }
         });
