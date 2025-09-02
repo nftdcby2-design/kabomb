@@ -302,13 +302,39 @@ class PirateBombGame {
 			paused: false
 		};
 
-		this.player = null;
-		this.enemies = [];
-		this.bombs = [];
-		this.platforms = [];
+		// Initialize game objects
+		this.player = {
+			x: 100,
+			y: 400,
+			width: 64,
+			height: 64,
+			velocityX: 0,
+			velocityY: 0,
+			onGround: false,
+			lives: 3
+		};
+		
+		this.enemies = [
+			{ x: 300, y: 400, width: 64, height: 64, direction: 1, speed: 2 },
+			{ x: 500, y: 400, width: 64, height: 64, direction: -1, speed: 2 }
+		];
+		
+		this.bombs = [
+			{ x: 200, y: 350, width: 32, height: 32, active: true },
+			{ x: 400, y: 350, width: 32, height: 32, active: true }
+		];
+		
+		this.platforms = [
+			{ x: 200, y: 336, width: 96, height: 32 },
+			{ x: 400, y: 272, width: 96, height: 32 },
+			{ x: 600, y: 304, width: 96, height: 32 }
+		];
+		
 		this.camera = { x: 0, y: 0 };
 		this.keys = {};
 		this.lastTime = 0;
+		this.score = 0;
+		this.lives = 3;
 
         console.log('✅ Simplified Pirate Bomb Game initialized');
 	}
@@ -526,33 +552,185 @@ class PirateBombGame {
         const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1); // Cap at 100ms
         this.lastTime = currentTime;
         
-        // Clear canvas
+        // Update game objects
+        this.updatePlayer(deltaTime);
+        this.updateEnemies(deltaTime);
+        
+        // Clear canvas with sky blue background
         this.ctx.fillStyle = '#87CEEB';
-		this.ctx.fillRect(0, 0, this.width, this.height);
-		
-        // Draw simple placeholder
-        if (this.assets && this.assets.player && this.assets.player['1-Idle']) {
-            const playerSprite = this.assets.player['1-Idle'][0];
-            this.ctx.drawImage(playerSprite, 100, 100, 64, 64);
-		} else {
-            // Draw fallback player
-            this.ctx.fillStyle = '#228B22';
-            this.ctx.fillRect(100, 100, 64, 64);
-        }
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        
+        // Draw game world
+        this.drawGameWorld();
+        
+        // Draw player
+        this.drawPlayer();
+        
+        // Draw enemies
+        this.drawEnemies();
+        
+        // Draw bombs
+        this.drawBombs();
         
         // Draw UI
-        this.ctx.fillStyle = '#4682B4';
-        this.ctx.font = 'bold 24px Arial';
-        this.ctx.textAlign = 'left';
-        this.ctx.fillText('Simplified Kaboom', 20, 40);
-        
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = '16px Arial';
-        this.ctx.fillText('Game is running with minimal assets', 20, 70);
-        this.ctx.fillText('Press any key to test input', 20, 100);
+        this.drawUI();
         
         // Continue game loop
         requestAnimationFrame(this.gameLoop.bind(this));
+    }
+
+    drawGameWorld() {
+        // Draw ground tiles
+        if (this.assets && this.assets.tiles_basic) {
+            const tileSize = 32;
+            const groundY = this.height - 100;
+            
+            // Draw ground tiles across the screen
+            for (let x = 0; x < this.width; x += tileSize) {
+                this.ctx.drawImage(this.assets.tiles_basic, x, groundY, tileSize, tileSize);
+            }
+            
+            // Draw some platform tiles
+            const platforms = [
+                { x: 200, y: groundY - 64, width: 96 },
+                { x: 400, y: groundY - 128, width: 96 },
+                { x: 600, y: groundY - 96, width: 96 }
+            ];
+            
+            platforms.forEach(platform => {
+                for (let x = platform.x; x < platform.x + platform.width; x += tileSize) {
+                    this.ctx.drawImage(this.assets.tiles_basic, x, platform.y, tileSize, tileSize);
+                }
+            });
+        } else {
+            // Fallback ground
+            this.ctx.fillStyle = '#8B4513';
+            this.ctx.fillRect(0, this.height - 100, this.width, 100);
+        }
+    }
+
+    drawPlayer() {
+        if (this.assets && this.assets.player_idle) {
+            // Draw player sprite
+            this.ctx.drawImage(this.assets.player_idle, this.player.x, this.player.y, 64, 64);
+        } else {
+            // Fallback player
+            this.ctx.fillStyle = '#228B22';
+            this.ctx.fillRect(this.player.x, this.player.y, 64, 64);
+        }
+    }
+
+    drawEnemies() {
+        if (this.assets && this.assets.enemy_basic) {
+            this.enemies.forEach(enemy => {
+                this.ctx.drawImage(this.assets.enemy_basic, enemy.x, enemy.y, 64, 64);
+            });
+        } else {
+            // Fallback enemies
+            this.ctx.fillStyle = '#FF0000';
+            this.enemies.forEach(enemy => {
+                this.ctx.fillRect(enemy.x, enemy.y, 64, 64);
+            });
+        }
+    }
+
+    drawBombs() {
+        if (this.assets && this.assets.bomb_basic) {
+            this.bombs.forEach(bomb => {
+                this.ctx.drawImage(this.assets.bomb_basic, bomb.x, bomb.y, 32, 32);
+            });
+        } else {
+            // Fallback bombs
+            this.ctx.fillStyle = '#000000';
+            this.bombs.forEach(bomb => {
+                this.ctx.fillRect(bomb.x, bomb.y, 32, 32);
+            });
+        }
+    }
+
+    drawUI() {
+        // Draw score
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = 'bold 20px Arial';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText(`Score: ${this.score}`, 20, 30);
+        
+        // Draw lives
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.fillText(`Lives: ${this.lives}`, 20, 60);
+        
+        // Draw bombs
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.fillText(`Bombs: ${this.bombs.length}`, 20, 90);
+        
+        // Draw instructions
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = '14px Arial';
+        this.ctx.fillText('Use WASD or Arrow Keys to move', 20, this.height - 60);
+        this.ctx.fillText('Space to jump', 20, this.height - 40);
+        this.ctx.fillText('B to place bomb', 20, this.height - 20);
+    }
+
+    updatePlayer(deltaTime) {
+        // Handle input
+        if (this.keys['KeyA'] || this.keys['ArrowLeft']) {
+            this.player.velocityX = -5;
+        } else if (this.keys['KeyD'] || this.keys['ArrowRight']) {
+            this.player.velocityX = 5;
+        } else {
+            this.player.velocityX *= 0.8; // Friction
+        }
+        
+        // Jumping
+        if ((this.keys['KeyW'] || this.keys['ArrowUp'] || this.keys['Space']) && this.player.onGround) {
+            this.player.velocityY = -15;
+            this.player.onGround = false;
+        }
+        
+        // Apply gravity
+        this.player.velocityY += 0.8;
+        
+        // Update position
+        this.player.x += this.player.velocityX * deltaTime;
+        this.player.y += this.player.velocityY * deltaTime;
+        
+        // Ground collision
+        if (this.player.y > this.height - 164) { // 100 (ground) + 64 (player height)
+            this.player.y = this.height - 164;
+            this.player.velocityY = 0;
+            this.player.onGround = true;
+        }
+        
+        // Platform collisions
+        this.platforms.forEach(platform => {
+            if (this.player.x < platform.x + platform.width &&
+                this.player.x + this.player.width > platform.x &&
+                this.player.y < platform.y + platform.height &&
+                this.player.y + this.player.height > platform.y) {
+                
+                if (this.player.velocityY > 0) { // Falling
+                    this.player.y = platform.y - this.player.height;
+                    this.player.velocityY = 0;
+                    this.player.onGround = true;
+                }
+            }
+        });
+        
+        // Screen boundaries
+        if (this.player.x < 0) this.player.x = 0;
+        if (this.player.x > this.width - this.player.width) this.player.x = this.width - this.player.width;
+    }
+
+    updateEnemies(deltaTime) {
+        this.enemies.forEach(enemy => {
+            // Simple AI - move back and forth
+            enemy.x += enemy.direction * enemy.speed * deltaTime;
+            
+            // Change direction at boundaries
+            if (enemy.x <= 0 || enemy.x >= this.width - enemy.width) {
+                enemy.direction *= -1;
+            }
+        });
     }
 
     // Setup input handling
