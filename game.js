@@ -564,7 +564,7 @@ class PirateBombGame {
     gameLoop(currentTime) {
         try {
             // Calculate delta time
-            const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1); // Cap at 100ms
+            const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.05); // Cap at 50ms for smoother movement
             this.lastTime = currentTime;
             
             // Debug: Log game loop execution
@@ -760,16 +760,16 @@ class PirateBombGame {
     updatePlayer(deltaTime) {
         // Handle input
         if (this.keys['KeyA'] || this.keys['ArrowLeft']) {
-            this.player.velocityX = -8; // Increased from -5 to -8
+            this.player.velocityX = -300; // Pixels per second (much faster)
         } else if (this.keys['KeyD'] || this.keys['ArrowRight']) {
-            this.player.velocityX = 8; // Increased from 5 to 8
+            this.player.velocityX = 300; // Pixels per second (much faster)
         } else {
-            this.player.velocityX *= 0.7; // Reduced friction for faster response
+            this.player.velocityX *= 0.3; // Much less friction for instant response
         }
         
         // Jumping
         if ((this.keys['KeyW'] || this.keys['ArrowUp'] || this.keys['Space']) && this.player.onGround) {
-            this.player.velocityY = -18; // Increased from -15 to -18
+            this.player.velocityY = -600; // Pixels per second (much higher jump)
             this.player.onGround = false;
         }
         
@@ -788,9 +788,9 @@ class PirateBombGame {
         }
         
         // Apply gravity
-        this.player.velocityY += 1.0; // Increased from 0.8 to 1.0 for faster falling
+        this.player.velocityY += 800; // Pixels per second squared (much faster falling)
         
-        // Update position
+        // Update position (deltaTime is in seconds, so this gives pixels per second)
         this.player.x += this.player.velocityX * deltaTime;
         this.player.y += this.player.velocityY * deltaTime;
         
@@ -823,8 +823,8 @@ class PirateBombGame {
 
     updateEnemies(deltaTime) {
         this.enemies.forEach(enemy => {
-            // Simple AI - move back and forth with increased speed
-            enemy.x += enemy.direction * enemy.speed * deltaTime * 60; // Multiply by 60 to make movement visible
+            // Simple AI - move back and forth with proper speed
+            enemy.x += enemy.direction * 150 * deltaTime; // 150 pixels per second
             
             // Change direction at boundaries
             if (enemy.x <= 0 || enemy.x >= this.width - enemy.width) {
@@ -832,7 +832,7 @@ class PirateBombGame {
             }
             
             // Add some vertical movement for more dynamic enemies
-            enemy.y += Math.sin(this.frameCount * 0.1) * 0.5;
+            enemy.y += Math.sin(this.frameCount * 0.1) * 2 * deltaTime; // 2 pixels per second
         });
     }
 
