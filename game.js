@@ -339,6 +339,13 @@ class PirateBombGame {
 		this.lastTime = 0;
 		this.score = 0;
 		this.lives = 3;
+		this.frameCount = 0; // Initialize frame counter
+		
+		// Initialize recharge system
+		this.rechargeSystem = {
+			timeRemaining: 0,
+			isRecharging: false
+		};
 		
 		// Initialize assets structure
 		this.assets = {
