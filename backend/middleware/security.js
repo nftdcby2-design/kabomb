@@ -15,7 +15,7 @@ const securityMiddleware = {
                 scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "blob:"],
                 scriptSrcAttr: ["'self'", "'unsafe-inline'"],
                 imgSrc: ["'self'", "data:", "https:", "blob:"],
-                connectSrc: ["'self'", "https:", "wss:", "*.firebaseio.com", "*.googleapis.com", "*.firebase.com", "firestore.googleapis.com"],
+                connectSrc: ["'self'", "https:", "wss:"],
                 fontSrc: ["'self'", "https:", "data:"],
                 objectSrc: ["'none'"],
                 mediaSrc: ["'self'", "https:"],
@@ -304,9 +304,7 @@ const corsOptions = {
             'http://localhost:8000',
             'https://devkaboom.onrender.com',
             'https://kabomb.onrender.com',
-            'https://firestore.googleapis.com',
-            'https://*.firebaseio.com',
-            'https://*.firebase.com',
+
             'https://*.googleapis.com'
             // Add your production domains here
         ];
