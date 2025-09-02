@@ -173,6 +173,9 @@ class SimpleAssetLoader {
                     this.assets.objects.tiles = { 'blocks': [img] };
                 }
                 
+                // Store the loaded image for direct access
+                this.assets[asset.id] = img;
+                
                 console.log(`✅ Critical asset loaded: ${asset.id}${loadedFromPath ? ` from ${loadedFromPath}` : ' (fallback)'}`);
                 
                 loaded++;
@@ -311,17 +314,18 @@ class PirateBombGame {
 			velocityX: 0,
 			velocityY: 0,
 			onGround: false,
-			lives: 3
+			lives: 3,
+			state: 'idle' // idle, running, jumping
 		};
 		
 		this.enemies = [
-			{ x: 300, y: 400, width: 64, height: 64, direction: 1, speed: 2 },
-			{ x: 500, y: 400, width: 64, height: 64, direction: -1, speed: 2 }
+			{ x: 300, y: 400, width: 64, height: 64, direction: 1, speed: 2, state: 'patrol' },
+			{ x: 500, y: 400, width: 64, height: 64, direction: -1, speed: 2, state: 'patrol' }
 		];
 		
 		this.bombs = [
-			{ x: 200, y: 350, width: 32, height: 32, active: true },
-			{ x: 400, y: 350, width: 32, height: 32, active: true }
+			{ x: 200, y: 350, width: 32, height: 32, active: true, timer: 0 },
+			{ x: 400, y: 350, width: 32, height: 32, active: true, timer: 0 }
 		];
 		
 		this.platforms = [
@@ -335,6 +339,13 @@ class PirateBombGame {
 		this.lastTime = 0;
 		this.score = 0;
 		this.lives = 3;
+		
+		// Initialize assets structure
+		this.assets = {
+			player: {},
+			enemies: {},
+			objects: {}
+		};
 
         console.log('✅ Simplified Pirate Bomb Game initialized');
 	}
@@ -555,6 +566,7 @@ class PirateBombGame {
         // Update game objects
         this.updatePlayer(deltaTime);
         this.updateEnemies(deltaTime);
+        this.updateBombs(deltaTime);
         
         // Clear canvas with sky blue background
         this.ctx.fillStyle = '#87CEEB';
@@ -574,6 +586,9 @@ class PirateBombGame {
         
         // Draw UI
         this.drawUI();
+        
+        // Debug info
+        this.drawDebugInfo();
         
         // Continue game loop
         requestAnimationFrame(this.gameLoop.bind(this));
@@ -610,8 +625,12 @@ class PirateBombGame {
     }
 
     drawPlayer() {
-        if (this.assets && this.assets.player && this.assets.player['1-Idle'] && this.assets.player['1-Idle'][0]) {
+        // Try to use loaded sprite first, then fallback
+        if (this.assets && this.assets.player_idle) {
             // Draw player sprite
+            this.ctx.drawImage(this.assets.player_idle, this.player.x, this.player.y, 64, 64);
+        } else if (this.assets && this.assets.player && this.assets.player['1-Idle'] && this.assets.player['1-Idle'][0]) {
+            // Draw player sprite from structured assets
             this.ctx.drawImage(this.assets.player['1-Idle'][0], this.player.x, this.player.y, 64, 64);
         } else {
             // Fallback player
@@ -621,7 +640,12 @@ class PirateBombGame {
     }
 
     drawEnemies() {
-        if (this.assets && this.assets.enemies && this.assets.enemies['Bald Pirate'] && this.assets.enemies['Bald Pirate']['1-Idle'] && this.assets.enemies['Bald Pirate']['1-Idle'][0]) {
+        // Try to use loaded sprite first, then fallback
+        if (this.assets && this.assets.enemy_basic) {
+            this.enemies.forEach(enemy => {
+                this.ctx.drawImage(this.assets.enemy_basic, enemy.x, enemy.y, 64, 64);
+            });
+        } else if (this.assets && this.assets.enemies && this.assets.enemies['Bald Pirate'] && this.assets.enemies['Bald Pirate']['1-Idle'] && this.assets.enemies['Bald Pirate']['1-Idle'][0]) {
             this.enemies.forEach(enemy => {
                 this.ctx.drawImage(this.assets.enemies['Bald Pirate']['1-Idle'][0], enemy.x, enemy.y, 64, 64);
             });
@@ -635,7 +659,12 @@ class PirateBombGame {
     }
 
     drawBombs() {
-        if (this.assets && this.assets.objects && this.assets.objects['1-BOMB'] && this.assets.objects['1-BOMB']['1-Bomb Off'] && this.assets.objects['1-BOMB']['1-Bomb Off'][0]) {
+        // Try to use loaded sprite first, then fallback
+        if (this.assets && this.assets.bomb_basic) {
+            this.bombs.forEach(bomb => {
+                this.ctx.drawImage(this.assets.bomb_basic, bomb.x, bomb.y, 32, 32);
+            });
+        } else if (this.assets && this.assets.objects && this.assets.objects['1-BOMB'] && this.assets.objects['1-BOMB']['1-Bomb Off'] && this.assets.objects['1-BOMB']['1-Bomb Off'][0]) {
             this.bombs.forEach(bomb => {
                 this.ctx.drawImage(this.assets.objects['1-BOMB']['1-Bomb Off'][0], bomb.x, bomb.y, 32, 32);
             });
@@ -733,16 +762,48 @@ class PirateBombGame {
         });
     }
 
+    updateBombs(deltaTime) {
+        this.bombs.forEach(bomb => {
+            if (bomb.active) {
+                bomb.timer += deltaTime;
+                // Bombs explode after 3 seconds
+                if (bomb.timer > 3) {
+                    bomb.active = false;
+                    // Add explosion effect here later
+                }
+            }
+        });
+    }
+
+    drawDebugInfo() {
+        // Debug information overlay
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'left';
+        
+        this.ctx.fillText(`Player: (${Math.round(this.player.x)}, ${Math.round(this.player.y)})`, 20, this.height - 80);
+        this.ctx.fillText(`Velocity: (${Math.round(this.player.velocityX)}, ${Math.round(this.player.velocityY)})`, 20, this.height - 65);
+        this.ctx.fillText(`On Ground: ${this.player.onGround}`, 20, this.height - 50);
+        this.ctx.fillText(`Keys: ${Object.keys(this.keys).filter(k => this.keys[k]).join(', ')}`, 20, this.height - 35);
+        this.ctx.fillText(`Assets: ${Object.keys(this.assets).join(', ')}`, 20, this.height - 20);
+    }
+
     // Setup input handling
     setupInput() {
         // Keyboard input
         document.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
-            console.log('🎮 Key pressed:', e.code);
+            console.log('🎮 Key pressed:', e.code, 'Player pos:', this.player.x, this.player.y);
+            
+            // Prevent default for game keys
+            if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+                e.preventDefault();
+            }
         });
         
         document.addEventListener('keyup', (e) => {
             this.keys[e.code] = false;
+            console.log('🎮 Key released:', e.code);
         });
         
         // Mobile controls
