@@ -1882,178 +1882,19 @@
             console.error('❌ PlayerDataManager is NOT available immediately');
         }
         
-        // Force startGame availability check
+        // Simple startGame availability check
         setTimeout(() => {
-            console.log('🔍 Delayed check - startGame type:', typeof window.startGame);
-            console.log('🔍 Delayed check - PirateBombGame type:', typeof PirateBombGame);
+            console.log('🔍 Checking startGame availability...');
+            console.log('🔍 startGame type:', typeof window.startGame);
+            console.log('🔍 PirateBombGame type:', typeof window.PirateBombGame);
             
             if (typeof window.startGame !== 'function') {
-                console.error('❌ startGame still not available after 1 second!');
-                console.log('🔄 Attempting to force create startGame function...');
-                
-                // ORIGINAL SIMPLE START GAME
-                window.startGame = async function() {
-                    console.log('🎮 Starting original game...');
-                    
-                    try {
-                        // Hide welcome menu
-                        const welcomeMenu = document.getElementById('welcomeMenu');
-                        if (welcomeMenu) welcomeMenu.style.display = 'none';
-                        
-                        // Show loading screen
-                        const loadingScreen = document.getElementById('loadingScreen');
-                        if (loadingScreen) loadingScreen.style.display = 'flex';
-                        
-                        // Check if PirateBombGame is available
-                        if (typeof PirateBombGame === 'undefined') {
-                            console.error('❌ PirateBombGame class not found!');
-                            console.log('🔍 Available global objects:', Object.keys(window).filter(key => key.includes('Game') || key.includes('Pirate')));
-                            
-                            // Wait a bit more to see if it becomes available
-                            await new Promise(resolve => setTimeout(resolve, 2000));
-                            
-                            if (typeof PirateBombGame === 'undefined') {
-                                // Still not available, show error
-                                const errorMessage = 'PirateBombGame class not found! Please check the console for loading errors.';
-                                console.error(errorMessage);
-                                
-                                // Show error on canvas
-                                const canvas = document.getElementById('gameCanvas');
-                                if (canvas) {
-                                    const ctx = canvas.getContext('2d');
-                                    canvas.width = 800;
-                                    canvas.height = 600;
-                                    
-                                    // Clear canvas and draw error
-                                    ctx.fillStyle = '#1a1a2e';
-                                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                                    
-                                    ctx.textAlign = 'center';
-                                    ctx.fillStyle = '#ff6b6b';
-                                    ctx.font = 'bold 24px Arial';
-                                    ctx.fillText('Game Loading Error', canvas.width / 2, canvas.height / 2 - 40);
-                                    
-                                    ctx.fillStyle = '#ffffff';
-                                    ctx.font = '16px Arial';
-                                    ctx.fillText(errorMessage, canvas.width / 2, canvas.height / 2);
-                                    
-                                    ctx.fillStyle = '#4fc3f7';
-                                    ctx.font = '14px Arial';
-                                    ctx.fillText('Please refresh the page (F5)', canvas.width / 2, canvas.height / 2 + 40);
-                                }
-                                
-                                // Show welcome menu again
-                                if (welcomeMenu) welcomeMenu.style.display = 'block';
-                                if (loadingScreen) loadingScreen.style.display = 'none';
-                                
-                                return;
-                            }
-                        }
-                        
-                        // Start the original game
-                        console.log('🎮 Creating PirateBombGame instance...');
-                        const game = new PirateBombGame();
-                        window.game = game;
-                        console.log('🎮 Booting game...');
-                        await game.boot();
-                        console.log('✅ Game started successfully!');
-                    } catch (error) {
-                        console.error('❌ Game start failed:', error);
-                        
-                        // Show error on canvas
-                        const canvas = document.getElementById('gameCanvas');
-                        if (canvas) {
-                            const ctx = canvas.getContext('2d');
-                            canvas.width = 800;
-                            canvas.height = 600;
-                            
-                            // Clear canvas and draw error
-                            ctx.fillStyle = '#1a1a2e';
-                            ctx.fillRect(0, 0, canvas.width, canvas.height);
-                            
-                            ctx.textAlign = 'center';
-                            ctx.fillStyle = '#ff6b6b';
-                            ctx.font = 'bold 24px Arial';
-                            ctx.fillText('Game Startup Error', canvas.width / 2, canvas.height / 2 - 40);
-                            
-                            ctx.fillStyle = '#ffffff';
-                            ctx.font = '16px Arial';
-                            ctx.fillText(error.message, canvas.width / 2, canvas.height / 2);
-                            
-                            ctx.fillStyle = '#4fc3f7';
-                            ctx.font = '14px Arial';
-                            ctx.fillText('Please refresh the page (F5)', canvas.width / 2, canvas.height / 2 + 40);
-                        }
-                        
-                        // Show welcome menu again
-                        const welcomeMenu = document.getElementById('welcomeMenu');
-                        if (welcomeMenu) welcomeMenu.style.display = 'block';
-                        
-                        // Hide loading screen
-                        const loadingScreen = document.getElementById('loadingScreen');
-                        if (loadingScreen) loadingScreen.style.display = 'none';
-                    }
-                };
-                
-                // Also create the displayGameError function if it doesn't exist
-                if (typeof displayGameError === 'undefined') {
-                    window.displayGameError = function(title, message, details = null) {
-                        console.error(`🚨 ${title}:`, message);
-                        
-                        const canvas = document.getElementById('gameCanvas');
-                        if (canvas) {
-                            const ctx = canvas.getContext('2d');
-                            canvas.width = 800;
-                            canvas.height = 600;
-                            
-                            // Clear canvas and draw error
-                            ctx.fillStyle = '#1a1a2e';
-                            ctx.fillRect(0, 0, canvas.width, canvas.height);
-                            
-                            ctx.textAlign = 'center';
-                            ctx.fillStyle = '#ff6b6b';
-                            ctx.font = 'bold 24px Arial';
-                            ctx.fillText(title, canvas.width / 2, canvas.height / 2 - 60);
-                            
-                            ctx.fillStyle = '#ffffff';
-                            ctx.font = '16px Arial';
-                            ctx.fillText(message, canvas.width / 2, canvas.height / 2 - 20);
-                            
-                            if (details) {
-                                ctx.fillStyle = '#ffeb3b';
-                                ctx.font = '12px Arial';
-                                ctx.fillText('Error: ' + details, canvas.width / 2, canvas.height / 2 + 20);
-                            }
-                            
-                            ctx.fillStyle = '#4fc3f7';
-                            ctx.font = '14px Arial';
-                            ctx.fillText('Please refresh the page (F5)', canvas.width / 2, canvas.height / 2 + 60);
-                        }
-                    };
-                }
-                
-                console.log('✅ Emergency startGame function created');
+                console.error('❌ startGame function not available!');
             } else {
-                console.log('✅ startGame function is properly available');
+                console.log('✅ startGame function is available');
             }
         }, 1000);
-    </script>
-    
-    <!-- ORIGINAL GAME ENGINE RESTORED -->
-    <!-- All optimization attempts removed - back to working baseline -->
-    
-    <!-- Direct Sound Button Test -->
 
-    
-    <!-- Web3 Initialization -->
-    <script>
-    <!-- All optimization attempts removed - back to working baseline -->
-    
-    <!-- Direct Sound Button Test -->
-
-    
-    <!-- Web3 Initialization -->
-    <script>
 
         
         // Initialize Web3 components

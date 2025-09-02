@@ -176,7 +176,17 @@ class GameAssetsLoader {
             // Add timeout for image loading
             const timeout = setTimeout(() => {
                 console.warn(`⏰ Image loading timeout: ${encodedSrc}`);
-                reject(new Error(`Timeout loading image: ${encodedSrc}`));
+                // Create a fallback image instead of rejecting
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(0, 0, 64, 64);
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(0, 0, 64, 64);
+                resolve(canvas);
             }, this.timeoutDuration);
             
             img.onload = () => {
@@ -186,29 +196,34 @@ class GameAssetsLoader {
                     resolve(img);
                 } else {
                     console.warn(`⚠️ Invalid image loaded: ${encodedSrc}`);
-                    reject(new Error(`Invalid image: ${encodedSrc}`));
+                    // Create a fallback image instead of rejecting
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 64;
+                    canvas.height = 64;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#FFFF00';
+                    ctx.fillRect(0, 0, 64, 64);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(0, 0, 64, 64);
+                    resolve(canvas);
                 }
             };
             
             img.onerror = (error) => {
                 clearTimeout(timeout);
                 console.warn(`❌ Failed to load image: ${encodedSrc}`, error);
-                // Try to load a fallback image
-                if (src.includes('Sprites/')) {
-                    // This is a game sprite, try to create a fallback
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 64;
-                    canvas.height = 64;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#CCCCCC';
-                    ctx.fillRect(0, 0, 64, 64);
-                    ctx.strokeStyle = '#000000';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(0, 0, 64, 64);
-                    resolve(canvas);
-                } else {
-                    reject(new Error(`Failed to load image: ${encodedSrc}`));
-                }
+                // Create a fallback image instead of rejecting
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#888888';
+                ctx.fillRect(0, 0, 64, 64);
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(0, 0, 64, 64);
+                resolve(canvas);
             };
             
             // Set src after setting up handlers
@@ -439,7 +454,9 @@ class GameAssetsLoader {
      */
     generateFramePaths(basePath, maxFrames) {
         const paths = [];
-        for (let i = 1; i <= maxFrames; i++) {
+        // Instead of assuming sequential numbering, we'll try a wider range
+        // and let the loader skip missing files
+        for (let i = 1; i <= maxFrames * 3; i++) { // Try 3x the expected frames to account for gaps
             paths.push(`${basePath}/${i}.png`);
         }
         return paths;
@@ -459,7 +476,7 @@ class GameAssetsLoader {
                     const img = await this.loadSingleAsset(path);
                     return { index: i + index, img };
                 } catch (error) {
-                    console.warn(`Frame load failed: ${path}`);
+                    // Don't log individual frame failures - expected due to gaps in numbering
                     return { index: i + index, img: null };
                 }
             });
@@ -467,7 +484,7 @@ class GameAssetsLoader {
             const batchResults = await Promise.allSettled(batchPromises);
             batchResults.forEach(result => {
                 if (result.status === 'fulfilled' && result.value.img) {
-                    frames[result.value.index] = result.value.img;
+                    frames.push(result.value.img); // Just push valid frames, don't worry about index
                 }
             });
             
@@ -475,7 +492,13 @@ class GameAssetsLoader {
             await new Promise(resolve => setTimeout(resolve, 25));
         }
         
-        return frames.filter(frame => frame !== null);
+        // If no frames loaded, create a fallback
+        if (frames.length === 0) {
+            console.warn('No frames loaded, creating fallback');
+            frames.push(this.createGenericFallback());
+        }
+        
+        return frames;
     }
 
     /**
@@ -490,28 +513,33 @@ class GameAssetsLoader {
         };
 
         try {
-            // Map loaded assets to game format
-            if (this.assets.has('player_idle_full')) {
+            // Map loaded assets to game format with better fallback handling
+            // Player Idle Animation
+            if (this.assets.has('player_idle_full') && this.assets.get('player_idle_full').length > 0) {
                 gameAssets.player['1-Idle'] = this.assets.get('player_idle_full');
-            } else if (this.assets.has('player_idle')) {
+            } else if (this.assets.has('player_idle') && this.assets.get('player_idle')) {
                 gameAssets.player['1-Idle'] = [this.assets.get('player_idle')];
             } else {
                 // Create fallback
-                gameAssets.player['1-Idle'] = [this.getFallbackSprite('player_idle')];
+                const fallback = this.getFallbackSprite('player_idle');
+                gameAssets.player['1-Idle'] = [fallback];
                 console.warn('⚠️ Using fallback for player idle animation');
             }
 
-            if (this.assets.has('player_run_full')) {
+            // Player Run Animation
+            if (this.assets.has('player_run_full') && this.assets.get('player_run_full').length > 0) {
                 gameAssets.player['2-Run'] = this.assets.get('player_run_full');
-            } else if (this.assets.has('player_run')) {
+            } else if (this.assets.has('player_run') && this.assets.get('player_run')) {
                 gameAssets.player['2-Run'] = [this.assets.get('player_run')];
             } else {
                 // Create fallback
-                gameAssets.player['2-Run'] = [this.getFallbackSprite('player_run')];
+                const fallback = this.getFallbackSprite('player_run');
+                gameAssets.player['2-Run'] = [fallback];
                 console.warn('⚠️ Using fallback for player run animation');
             }
 
-            if (this.assets.has('player_jump')) {
+            // Player Jump Animation
+            if (this.assets.has('player_jump') && this.assets.get('player_jump').length > 0) {
                 gameAssets.player['4-Jump'] = this.assets.get('player_jump');
             } else {
                 // Use idle as fallback
@@ -519,35 +547,53 @@ class GameAssetsLoader {
                 console.warn('⚠️ Using idle animation as fallback for player jump');
             }
 
+            // Player Fall Animation
             gameAssets.player['5-Fall'] = gameAssets.player['1-Idle'];
 
             // Enemy assets
             gameAssets.enemies['Bald Pirate'] = {};
-            if (this.assets.has('enemy_idle_full')) {
+            if (this.assets.has('enemy_idle_full') && this.assets.get('enemy_idle_full').length > 0) {
                 gameAssets.enemies['Bald Pirate']['1-Idle'] = this.assets.get('enemy_idle_full');
-            } else if (this.assets.has('enemy_basic')) {
+            } else if (this.assets.has('enemy_basic') && this.assets.get('enemy_basic')) {
                 gameAssets.enemies['Bald Pirate']['1-Idle'] = [this.assets.get('enemy_basic')];
             } else {
                 // Create fallback
-                gameAssets.enemies['Bald Pirate']['1-Idle'] = [this.getFallbackSprite('enemy_basic')];
+                const fallback = this.getFallbackSprite('enemy_basic');
+                gameAssets.enemies['Bald Pirate']['1-Idle'] = [fallback];
                 console.warn('⚠️ Using fallback for enemy idle animation');
             }
 
             // Object assets
-            gameAssets.objects = {
-                '1-BOMB': {
-                    '1-Bomb Off': this.assets.has('bomb_basic') ? [this.assets.get('bomb_basic')] : [this.getFallbackSprite('bomb_basic')]
-                },
-                'tiles': {
-                    'blocks': this.assets.has('tiles_basic') ? [this.assets.get('tiles_basic')] : [this.getFallbackSprite('tiles_basic')]
-                }
-            };
+            if (this.assets.has('bomb_basic') && this.assets.get('bomb_basic')) {
+                gameAssets.objects['1-BOMB'] = {
+                    '1-Bomb Off': [this.assets.get('bomb_basic')]
+                };
+            } else {
+                const fallback = this.getFallbackSprite('bomb_basic');
+                gameAssets.objects['1-BOMB'] = {
+                    '1-Bomb Off': [fallback]
+                };
+                console.warn('⚠️ Using fallback for bomb asset');
+            }
+
+            // Tile assets
+            if (this.assets.has('tiles_basic') && this.assets.get('tiles_basic')) {
+                gameAssets.objects.tiles = {
+                    'blocks': [this.assets.get('tiles_basic')]
+                };
+            } else {
+                const fallback = this.getFallbackSprite('tiles_basic');
+                gameAssets.objects.tiles = {
+                    'blocks': [fallback]
+                };
+                console.warn('⚠️ Using fallback for tile asset');
+            }
 
             // Add background tiles if loaded
-            if (this.assets.has('tiles_level2')) {
+            if (this.assets.has('tiles_level2') && this.assets.get('tiles_level2')) {
                 gameAssets.objects.tiles['block2'] = [this.assets.get('tiles_level2')];
             }
-            if (this.assets.has('tiles_level3')) {
+            if (this.assets.has('tiles_level3') && this.assets.get('tiles_level3')) {
                 gameAssets.objects.tiles['block3'] = [this.assets.get('tiles_level3')];
             }
 
@@ -596,6 +642,20 @@ class GameAssetsLoader {
     }
 
     /**
+     * Get loading statistics
+     */
+    getStats() {
+        return {
+            totalAssets: this.assets.size,
+            cacheSize: this.cache.size,
+            activeLoads: this.activeLoads,
+            queueSize: this.loadingQueue.length
+        };
+    }
+}
+
+// Export for global use
+window.GameAssetsLoader = GameAssetsLoader;    /**
      * Get loading statistics
      */
     getStats() {

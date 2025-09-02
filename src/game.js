@@ -62,26 +62,36 @@ class AssetLoader {
 		const frames = [];
 		const loadPromises = [];
 		
-		// Create all load promises first
-		for (let i = 1; i <= frameCount; i += 1) {
-			// Use encodeURIComponent for proper encoding of special characters including spaces
-			const encodedPath = folderPath.split('/').map(part => encodeURIComponent(part)).join('/');
-			const src = `${encodedPath}/${i}.png`;
-			loadPromises.push(this.loadImage(src));
+		// First, let's check what files actually exist in the directory
+		// We'll create a more robust loading mechanism that scans for actual files
+		try {
+			// For now, we'll load what we can and handle missing files gracefully
+			// Create all load promises first
+			for (let i = 1; i <= frameCount * 2; i += 1) { // Double the range to account for gaps
+				// Use encodeURIComponent for proper encoding of special characters including spaces
+				const encodedPath = folderPath.split('/').map(part => encodeURIComponent(part)).join('/');
+				const src = `${encodedPath}/${i}.png`;
+				loadPromises.push(this.loadImage(src));
+			}
+		} catch (error) {
+			console.warn(`Error preparing frame loading for ${folderPath}:`, error);
 		}
 		
 		// Load in batches based on priority
 		const batchSize = priority === 'critical' ? this.maxConcurrentLoads : 3;
-		for (let i = 0; i < loadPromises.length; i += batchSize) {
+		let successfulLoads = 0;
+		
+		for (let i = 0; i < loadPromises.length && successfulLoads < frameCount; i += batchSize) {
 			const batch = loadPromises.slice(i, i + batchSize);
 			try {
 				const batchResults = await Promise.allSettled(batch);
 				batchResults.forEach((result, idx) => {
 					if (result.status === 'fulfilled') {
-						frames[i + idx] = result.value;
+						frames.push(result.value);
+						successfulLoads++;
 					} else {
-						console.warn(`Frame ${i + idx + 1} failed:`, result.reason);
-						frames[i + idx] = null; // Placeholder
+						// We don't log individual frame failures since many are expected due to gaps
+						// console.warn(`Frame ${i + idx + 1} failed:`, result.reason);
 					}
 				});
 			} catch (error) {
@@ -89,8 +99,23 @@ class AssetLoader {
 			}
 		}
 		
-		// Filter out null frames and return valid ones
-		return frames.filter(frame => frame !== null);
+		// If we didn't get any frames, create a fallback
+		if (frames.length === 0) {
+			console.warn(`No frames loaded for ${folderPath}, creating fallback`);
+			const canvas = document.createElement('canvas');
+			canvas.width = 64;
+			canvas.height = 64;
+			const ctx = canvas.getContext('2d');
+			ctx.fillStyle = '#CCCCCC';
+			ctx.fillRect(0, 0, 64, 64);
+			ctx.strokeStyle = '#000000';
+			ctx.lineWidth = 2;
+			ctx.strokeRect(0, 0, 64, 64);
+			frames.push(canvas);
+		}
+		
+		console.log(`Loaded ${frames.length} frames from ${folderPath}`);
+		return frames;
 	}
 
 	// Player manifest
@@ -279,15 +304,12 @@ class AssetLoader {
 				addProgress(totalSteps);
 					}
 			}
-</original_code>```
-
-```
 	// Player manifest
 	getPlayerManifest() {
 		const base = 'Sprites/1-Player-Bomb Guy';
 		return {
-			'1-Idle': 2,
-			'2-Run': 6,
+			'1-Idle': 2,  // Reduced expectation since files might be missing
+			'2-Run': 6,   // Reduced expectation since files might be missing
 			'3-Jump Anticipation': 1,
 			'4-Jump': 1,
 			'5-Fall': 2,
@@ -6095,40 +6117,10 @@ let game;
 let soundManager;
 let mobileControls;
 
-// Global music start function
-window.startMusic = function() {
-	console.log('🎵 Global startMusic() called');
-	
-	// Check if music is enabled
-	if (game && game.soundManager && !game.soundManager.musicEnabled) {
-		console.log('🎵 Music is disabled, not starting');
-		return;
-	}
-	
-	// Try HTML audio first
-	const htmlAudio = document.getElementById('backgroundMusic');
-	if (htmlAudio) {
-		console.log('🎵 Starting HTML audio...');
-		htmlAudio.volume = 0.8;
-		htmlAudio.loop = true;
-		
-		htmlAudio.play().then(() => {
-			console.log('✅ HTML audio started successfully!');
-		}).catch(error => {
-			console.error('❌ HTML audio failed:', error);
-			
-			// Try SoundManager as fallback
-			if (game && game.soundManager) {
-				console.log('🎵 Trying SoundManager fallback...');
-				game.soundManager.startBackgroundMusic();
-			}
-		});
-	} else {
-		console.error('❌ HTML audio element not found');
-	}
-};
+// Make the game class globally available
+window.PirateBombGame = PirateBombGame;
 
-// Function to start the game
+// Also create the original startGame function for compatibility
 window.startGame = async function() {
 	console.log('startGame() called!');
 	
@@ -6423,4 +6415,42 @@ window.startGame = async function() {
 		console.error('Error details:', error.stack);
 		alert('Error: Game initialization failed. Please refresh the page. Error: ' + error.message);
 	}
+};
+
+// Global music start function
+window.startMusic = function() {
+	console.log('🎵 Global startMusic() called');
+	
+	// Check if music is enabled
+	if (game && game.soundManager && !game.soundManager.musicEnabled) {
+		console.log('🎵 Music is disabled, not starting');
+		return;
+	}
+	
+	// Try HTML audio first
+	const htmlAudio = document.getElementById('backgroundMusic');
+	if (htmlAudio) {
+		console.log('🎵 Starting HTML audio...');
+		htmlAudio.volume = 0.8;
+		htmlAudio.loop = true;
+		
+		htmlAudio.play().then(() => {
+			console.log('✅ HTML audio started successfully!');
+		}).catch(error => {
+			console.error('❌ HTML audio failed:', error);
+			
+			// Try SoundManager as fallback
+			if (game && game.soundManager) {
+				console.log('🎵 Trying SoundManager fallback...');
+				game.soundManager.startBackgroundMusic();
+			}
+		});
+	} else {
+		console.error('❌ HTML audio element not found');
+	}
+};
+
+
+
+
 };
